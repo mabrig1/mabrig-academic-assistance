@@ -3,6 +3,8 @@ import { Order, User, Service } from "@/lib/models";
 
 export const dynamic = "force-dynamic";
 
+type LookupDoc = { name?: string } | null;
+
 const columns = [
   ["NEW", "New orders"], ["AWAITING_PAYMENT", "Awaiting payment"], ["PAID", "Paid"],
   ["IN_PROGRESS", "In progress"], ["QUALITY_CHECK", "Quality check"], ["PRINTING", "Printing"],
@@ -19,7 +21,12 @@ export default async function AdminPage() {
   ]);
 
   const enriched = await Promise.all(recent.map(async (order) => {
-    const [user, service] = await Promise.all([User.findById(order.userId).lean(), Service.findById(order.serviceId).lean()]);
+    const [userResult, serviceResult] = await Promise.all([
+      User.findById(order.userId).lean().exec(),
+      Service.findById(order.serviceId).lean().exec(),
+    ]);
+    const user = userResult as LookupDoc;
+    const service = serviceResult as LookupDoc;
     return { ...order, userName: user?.name || "Unknown", serviceName: service?.name || "Unknown" };
   }));
 
