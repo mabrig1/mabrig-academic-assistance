@@ -5,9 +5,13 @@ import { calculateQuote } from "@/lib/pricing";
 
 export const runtime = "nodejs";
 
-const PRINT_OPTIONS = ["DIGITAL_ONLY", "PRINT_ONLY", "DIGITAL_AND_PRINT", "DIGITAL_PRINT_DELIVERY"];
-const PRINT_TYPES = ["BLACK_WHITE", "COLOUR"];
-const BINDINGS = ["NONE", "SPIRAL", "SOFT", "HARD"];
+type PrintOption = "DIGITAL_ONLY" | "PRINT_ONLY" | "DIGITAL_AND_PRINT" | "DIGITAL_PRINT_DELIVERY";
+type PrintType = "BLACK_WHITE" | "COLOUR";
+type BindingType = "NONE" | "SPIRAL" | "SOFT" | "HARD";
+
+const PRINT_OPTIONS: readonly PrintOption[] = ["DIGITAL_ONLY", "PRINT_ONLY", "DIGITAL_AND_PRINT", "DIGITAL_PRINT_DELIVERY"];
+const PRINT_TYPES: readonly PrintType[] = ["BLACK_WHITE", "COLOUR"];
+const BINDINGS: readonly BindingType[] = ["NONE", "SPIRAL", "SOFT", "HARD"];
 
 export async function POST(request: Request) {
   try {
@@ -19,10 +23,13 @@ export async function POST(request: Request) {
     const department = String(form.get("department") || "").trim() || null;
     const serviceName = String(form.get("service") || "").trim();
     const instructions = String(form.get("instructions") || "").trim();
-    const printOption = PRINT_OPTIONS.includes(String(form.get("printOption"))) ? String(form.get("printOption")) : "DIGITAL_ONLY";
-    const printType = PRINT_TYPES.includes(String(form.get("printType"))) ? String(form.get("printType")) : "BLACK_WHITE";
+    const rawPrintOption = String(form.get("printOption") || "");
+    const rawPrintType = String(form.get("printType") || "");
+    const rawBinding = String(form.get("binding") || "");
+    const printOption: PrintOption = PRINT_OPTIONS.includes(rawPrintOption as PrintOption) ? rawPrintOption as PrintOption : "DIGITAL_ONLY";
+    const printType: PrintType = PRINT_TYPES.includes(rawPrintType as PrintType) ? rawPrintType as PrintType : "BLACK_WHITE";
     const copies = Math.max(1, Math.min(100, Number(form.get("copies") || 1)));
-    const binding = BINDINGS.includes(String(form.get("binding"))) ? String(form.get("binding")) : "NONE";
+    const binding: BindingType = BINDINGS.includes(rawBinding as BindingType) ? rawBinding as BindingType : "NONE";
     const deliveryLocation = String(form.get("deliveryLocation") || "").trim();
     const deliveryNote = String(form.get("deliveryNote") || "").trim();
     const file = form.get("file");
