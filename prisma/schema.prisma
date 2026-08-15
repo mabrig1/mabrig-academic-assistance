@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+  WORKER
+  RIDER
+}
+
+enum OrderStatus {
+  NEW
+  QUOTATION
+  AWAITING_PAYMENT
+  PAID
+  ASSIGNED
+  IN_PROGRESS
+  QUALITY_CHECK
+  PRINTING
+  READY_FOR_PICKUP
+  OUT_FOR_DELIVERY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum DeliveryStatus {
+  PENDING
+  READY_FOR_PICKUP
+  PICKED_UP
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
+}
+
+model User {
+  id          String   @id @default(cuid())
+  name        String
+  whatsapp    String   @unique
+  email       String?  @unique
+  department  String?
+  level       String?
+  role        UserRole @default(STUDENT)
+  optedIn     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  orders      Order[]
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  active      Boolean  @default(true)
+  basePrice   Int?
+  createdAt   DateTime @default(now())
+  orders      Order[]
+}
+
+model Order {
+  id            String         @id @default(cuid())
+  orderNumber   String         @unique
+  userId        String
+  serviceId     String
+  status        OrderStatus    @default(NEW)
+  instructions  String
+  quotedAmount  Int?
+  currency      String         @default("NGN")
+  deadline      DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  user          User           @relation(fields: [userId], references: [id])
+  service       Service        @relation(fields: [serviceId], references: [id])
+  files         OrderFile[]
+  payment       Payment?
+  delivery      Delivery?
+  assignments   WorkerAssignment[]
+}
+
+model OrderFile {
+  id         String   @id @default(cuid())
+  orderId    String
+  fileName   String
+  storageKey String
+  mimeType   String?
+  sizeBytes  Int?
+  createdAt  DateTime @default(now())
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  orderId       String        @unique
+  reference     String        @unique
+  amount        Int
+  status        PaymentStatus @default(PENDING)
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model WorkerAssignment {
+  id         String   @id @default(cuid())
+  orderId    String
+  workerId   String
+  assignedAt DateTime @default(now())
+  completedAt DateTime?
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  worker     User     @relation(fields: [workerId], references: [id])
+}
+
+model Delivery {
+  id             String         @id @default(cuid())
+  orderId        String         @unique
+  status         DeliveryStatus @default(PENDING)
+  location       String
+  addressNote    String?
+  riderId        String?
+  pickedUpAt     DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime       @default(now())
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
