@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function PaymentCallback() {
+function PaymentCallbackContent() {
   const params = useSearchParams();
   const [message, setMessage] = useState("Verifying your payment...");
   useEffect(() => {
@@ -15,4 +15,12 @@ export default function PaymentCallback() {
       .catch(() => setMessage("Payment verification could not be completed. Please contact MABRIG support."));
   }, [params]);
   return <main className="section container"><div className="card order"><span className="badge">MABRIG PAYMENT</span><h1 style={{fontSize:42}}>Payment status</h1><p>{message}</p><div className="actions"><a className="btn primary" href="/track">Track your order</a><a className="btn secondary" href="/">Return home</a></div></div></main>;
+}
+
+export default function PaymentCallback() {
+  return (
+    <Suspense fallback={<main className="section container"><div className="card order"><span className="badge">MABRIG PAYMENT</span><h1 style={{fontSize:42}}>Payment status</h1><p>Loading payment status...</p></div></main>}>
+      <PaymentCallbackContent />
+    </Suspense>
+  );
 }
