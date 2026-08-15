@@ -1,4 +1,6 @@
-import { BindingType, PrintOption, PrintType } from "@prisma/client";
+type PrintOption = "DIGITAL_ONLY" | "PRINT_ONLY" | "DIGITAL_AND_PRINT" | "DIGITAL_PRINT_DELIVERY";
+type PrintType = "BLACK_WHITE" | "COLOUR";
+type BindingType = "NONE" | "SPIRAL" | "SOFT" | "HARD";
 
 const serviceBase: Record<string, number> = {
   "Project & Thesis Formatting": 5000,
@@ -18,11 +20,11 @@ export function calculateQuote(input: {
   delivery: boolean;
 }) {
   let total = serviceBase[input.service] ?? 3000;
-  if (input.printOption !== PrintOption.DIGITAL_ONLY) {
-    total += input.copies * (input.printType === PrintType.COLOUR ? 1500 : 700);
-    if (input.binding === BindingType.SPIRAL) total += 1500 * input.copies;
-    if (input.binding === BindingType.SOFT) total += 2500 * input.copies;
-    if (input.binding === BindingType.HARD) total += 5000 * input.copies;
+  if (input.printOption !== "DIGITAL_ONLY") {
+    total += input.copies * (input.printType === "COLOUR" ? 1500 : 700);
+    if (input.binding === "SPIRAL") total += 1500 * input.copies;
+    if (input.binding === "SOFT") total += 2500 * input.copies;
+    if (input.binding === "HARD") total += 5000 * input.copies;
   }
   if (input.delivery) total += 1500;
   return Math.max(total, 1000);
