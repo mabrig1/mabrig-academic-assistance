@@ -1,6 +1,7 @@
 import { createHmac } from "crypto";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { connectMongoDB } from "@/lib/mongodb";
+import { Order, Payment } from "@/lib/models";
 
 export const runtime = "nodejs";
 
@@ -12,16 +13,17 @@ export async function POST(request: Request) {
   const expected = createHmac("sha512", secret).update(raw).digest("hex");
   if (signature !== expected) return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
 
+  await connectMongoDB();
   const event = JSON.parse(raw);
   if (event.event === "charge.success") {
     const reference = String(event.data?.reference || "");
     const amount = Number(event.data?.amount || 0);
-    const payment = await prisma.payment.findUnique({ where: { reference } });
+    const payment = await Payment.findOne({ reference });
     if (payment && amount === payment.amount * 100) {
-      await prisma.$transaction([
-        prisma.payment.update({ where: { id: payment.id }, data: { status: "PAID", paidAt: new Date() } }),
-        prisma.order.update({ where: { id: payment.orderId }, data: { status: "PAID" } }),
-      ]);
+      payment.status = "PAID";
+      payment.paidAt = new Date();
+      await payment.save();
+      await Order.findByIdAndUpdate(payment.orderId, { status: "PAID" });
     }
   }
   return NextResponse.json({ received: true });
