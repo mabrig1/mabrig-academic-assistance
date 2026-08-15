@@ -1,19 +1,15 @@
 {
   "name": "mabrig-academic-assistance",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "lint": "next lint"
   },
   "dependencies": {
-    "@prisma/client": "6.14.0",
+    "mongoose": "8.18.0",
     "next": "15.5.7",
     "react": "19.1.1",
     "react-dom": "19.1.1"
@@ -22,8 +18,6 @@
     "@types/node": "22.10.2",
     "@types/react": "19.0.2",
     "@types/react-dom": "19.0.2",
-    "prisma": "6.14.0",
-    "tsx": "4.20.3",
     "typescript": "5.7.2"
   }
 }
