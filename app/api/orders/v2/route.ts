@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     const department = String(form.get("department") || "").trim() || null;
     const serviceName = String(form.get("service") || "").trim();
     const instructions = String(form.get("instructions") || "").trim();
+    const referralCode = String(form.get("referralCode") || "").trim().slice(0, 64) || null;
     const rawPrintOption = String(form.get("printOption") || "");
     const rawPrintType = String(form.get("printType") || "");
     const rawBinding = String(form.get("binding") || "");
@@ -42,11 +43,11 @@ export async function POST(request: Request) {
     const orderNumber = `MAB-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${Math.floor(10000 + Math.random() * 90000)}`;
     const quotedAmount = calculateQuote({ service: serviceName, printOption, printType, copies, binding, delivery: printOption === "DIGITAL_PRINT_DELIVERY" });
 
-    const order = await Order.create({ orderNumber, userId: user._id, serviceId: service._id, instructions, quotedAmount, printOption, printType, copies, binding });
+    const order = await Order.create({ orderNumber, userId: user._id, serviceId: service._id, referralCode, instructions, quotedAmount, printOption, printType, copies, binding });
     if (file instanceof File && file.size > 0) await OrderFile.create({ orderId: order._id, fileName: file.name, storageKey: `pending/${orderNumber}/${file.name}`, mimeType: file.type || null, sizeBytes: file.size });
     if (printOption === "DIGITAL_PRINT_DELIVERY") await Delivery.create({ orderId: order._id, location: deliveryLocation, addressNote: deliveryNote || null });
 
-    return NextResponse.json({ ok: true, orderId: order.orderNumber, quotedAmount, currency: "NGN", emailAvailable: Boolean(user.email), status: order.status });
+    return NextResponse.json({ ok: true, orderId: order.orderNumber, quotedAmount, currency: "NGN", emailAvailable: Boolean(user.email), referralCode, status: order.status });
   } catch (error) {
     console.error("MongoDB order creation failed", error);
     return NextResponse.json({ error: "We could not create the order. Check MONGODB_URI and try again." }, { status: 500 });
