@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 const services = [
   ["Project & Thesis Formatting", "APA, MLA, Harvard, Chicago, pagination, TOC and document cleanup."],
@@ -16,6 +16,18 @@ export default function Home() {
   const [message, setMessage] = useState("");
   const [paymentUrl, setPaymentUrl] = useState("");
   const [printOption, setPrintOption] = useState("DIGITAL_ONLY");
+  const [referralCode, setReferralCode] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = (params.get("ref") || "").trim().slice(0, 64);
+    const saved = window.sessionStorage.getItem("mabrig_referral_code") || "";
+    const code = fromUrl || saved;
+    if (code) {
+      setReferralCode(code);
+      window.sessionStorage.setItem("mabrig_referral_code", code);
+    }
+  }, []);
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); setPaymentUrl(""); setMessage("Creating your order and quotation...");
@@ -35,9 +47,10 @@ export default function Home() {
   }
 
   return <>
-    <header className="container nav"><div className="brand">MABRIG ICT</div><div className="actions"><a className="btn secondary" href="/track">Track Order</a><a className="btn secondary" href="#order">Place an Order</a></div></header>
+    <header className="container nav"><div className="brand">MABRIG ICT</div><div className="actions"><a className="btn secondary" href="/partners">Partner Referrals</a><a className="btn secondary" href="/track">Track Order</a><a className="btn secondary" href="#order">Place an Order</a></div></header>
     <main>
-      <section className="hero"><div className="container"><span className="badge">UNN Academic & Document Services</span><h1>Submit. Pay. Track. Print. Deliver.</h1><p className="lead">One platform for academic support, professional document processing, printing, binding and campus delivery.</p><div className="actions"><a className="btn primary" href="#order">Start an Order</a><a className="btn secondary" href="#services">Explore Services</a></div></div></section>
+      <section className="hero"><div className="container"><span className="badge">UNN Academic & Document Services</span><h1>Submit. Pay. Track. Print. Deliver.</h1><p className="lead">One platform for academic support, professional document processing, printing, binding and campus delivery.</p><div className="actions"><a className="btn primary" href="#order">Start an Order</a><a className="btn secondary" href="#services">Explore Services</a><a className="btn secondary" href="/partners">Become a Partner</a></div></div></section>
+      {referralCode && <section className="section container" style={{paddingBottom:0}}><div className="notice"><strong>Partner referral recorded.</strong> Your order will be attributed to referral code <strong>{referralCode}</strong> where eligible under the partner programme.</div></section>}
       <section id="services" className="section container"><h2>What we deliver</h2><div className="grid">{services.map(([title, text]) => <article className="card" key={title}><h3>{title}</h3><p>{text}</p></article>)}</div></section>
       <section id="order" className="section"><div className="container order"><div className="card"><h2>Place an Order</h2><p>We review the request, calculate the quotation and activate payment before work begins.</p>
         <form onSubmit={submit}><div className="form-grid">
@@ -52,6 +65,7 @@ export default function Home() {
           {printOption === "DIGITAL_PRINT_DELIVERY" && <><label className="field"><span>UNN delivery location</span><select name="deliveryLocation" required><option value="">Choose location</option>{locations.map(x => <option key={x}>{x}</option>)}</select></label><label className="field"><span>Delivery note</span><input name="deliveryNote" placeholder="Hostel/block/meeting point" /></label></>}
           <label className="field full"><span>Instructions / deadline</span><textarea name="instructions" required placeholder="Tell us what you need, page count and deadline." /></label>
           <label className="field full"><span>File (optional)</span><input name="file" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" /></label>
+          <input type="hidden" name="referralCode" value={referralCode} />
         </div>
         <div className="notice" style={{marginTop:16}}>Academic integrity: services focus on tutoring, research assistance, editing, proofreading, formatting and document production. Students remain responsible for assessed submissions.</div>
         <button className="btn primary" style={{marginTop:16}} type="submit">Create Order & Get Quote</button>
