@@ -21,6 +21,7 @@ const orderSchema = new Schema({
   orderNumber: { type: String, required: true, unique: true, index: true },
   userId: { type: Schema.Types.ObjectId, ref: "MabrigUser", required: true },
   serviceId: { type: Schema.Types.ObjectId, ref: "MabrigService", required: true },
+  referralCode: { type: String, default: null, index: true },
   status: { type: String, default: "NEW" },
   instructions: { type: String, required: true },
   quotedAmount: { type: Number, default: null },
