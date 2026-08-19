@@ -39,6 +39,7 @@ export async function POST(request: Request) {
     const email = String(form.get("email") || "").trim().toLowerCase() || null;
     const department = String(form.get("department") || "").trim() || null;
     const serviceName = String(form.get("service") || "").trim();
+    const documentTitle = String(form.get("documentTitle") || "").trim().slice(0, 200) || null;
     const instructions = String(form.get("instructions") || "").trim();
     const pastedContent = String(form.get("pastedContent") || "").trim();
     const referralCode = String(form.get("referralCode") || "").trim().slice(0, 64) || null;
@@ -108,6 +109,7 @@ export async function POST(request: Request) {
       userId: user._id,
       serviceId: service._id,
       referralCode,
+      documentTitle,
       instructions,
       pastedContent: documentText || null,
       conversionSource,
