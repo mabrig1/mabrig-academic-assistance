@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 
-const SITE_URL = "https://academic.mabrigkorie.org/#order";
+const SITE_URL = "https://academic.mabrigkorie.org/academic-printing";
+const ORDER_URL = "/academic-printing/order";
 const WHATSAPP_NUMBER = "2347065342818";
-const SHARE_TEXT = "🎓 Deadline close? Upload up to 20 pages to Mabrig Academic Assistance for formatting, printing, binding and campus delivery.";
+const SHARE_TEXT = "🎓 Deadline close? Upload or paste up to 20 pages to Mabrig Academic Assistance for formatting, printing, binding and campus delivery.";
 
 const shareUrl = encodeURIComponent(SITE_URL);
 const shareText = encodeURIComponent(SHARE_TEXT);
@@ -30,21 +31,21 @@ export default function SpecialServicePoster() {
             <span className="poster-kicker">🔥 SPECIAL STUDENT SERVICE • UNN</span>
             <h2 id="special-service-title">Deadline Close? Don’t Let Formatting & Printing Delay Your Submission.</h2>
             <p className="poster-lead">
-              Upload your academic work — <strong>up to 20 pages</strong> — and send it straight into our print-shop workflow. We review the requirements, format where needed, convert, print, bind and arrange campus delivery.
+              Upload your academic work <strong>or paste it directly</strong> — up to <strong>20 pages</strong> — and send it straight into our print-shop workflow. We review the requirements, format where needed, convert, print, bind and arrange campus delivery.
             </p>
             <p className="poster-punch">Your work is written. Let us make it submission-ready.</p>
 
             <div className="poster-features" aria-label="Service features">
+              <span>Upload or Paste</span>
               <span>Times New Roman • 12pt</span>
               <span>Single / 1.5 / Double spacing</span>
               <span>Citations & References</span>
               <span>Cover Page</span>
-              <span>Document Conversion</span>
               <span>Binding & Campus Delivery</span>
             </div>
 
             <div className="poster-actions">
-              <a className="poster-btn poster-btn-primary" href="#order">📄 Upload My Work Now</a>
+              <a className="poster-btn poster-btn-primary" href={ORDER_URL}>📄 Upload or Paste My Work</a>
               <a
                 className="poster-btn poster-btn-whatsapp"
                 href={`https://wa.me/${WHATSAPP_NUMBER}?text=${contactText}`}
