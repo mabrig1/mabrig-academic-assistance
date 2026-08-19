@@ -30,7 +30,16 @@ const orderSchema = new Schema({
   printOption: { type: String, default: "DIGITAL_ONLY" },
   printType: { type: String, default: "BLACK_WHITE" },
   copies: { type: Number, default: 1 },
+  pages: { type: Number, min: 1, max: 20, default: 1 },
   binding: { type: String, default: "NONE" },
+  requestedFormat: { type: String, default: "PDF" },
+  spacing: { type: String, default: "1.5" },
+  font: { type: String, default: "Times New Roman" },
+  fontSize: { type: Number, default: 12 },
+  citations: { type: Boolean, default: false },
+  references: { type: Boolean, default: false },
+  coverPage: { type: Boolean, default: false },
+  conversionRequested: { type: Boolean, default: false },
 }, { timestamps: true });
 
 const orderFileSchema = new Schema({
