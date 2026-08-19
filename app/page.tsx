@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import SpecialServicePoster from "./components/SpecialServicePoster";
 
 const services = [
   ["Project & Thesis Formatting", "APA, MLA, Harvard, Chicago, pagination, TOC and document cleanup."],
@@ -52,6 +53,7 @@ export default function Home() {
     <main>
       <section className="hero"><div className="container"><span className="badge">UNN Academic & Document Services</span><h1>Submit. Pay. Track. Print. Deliver.</h1><p className="lead">One platform for academic support, professional document processing, printing, binding and campus delivery.</p><div className="actions"><a className="btn primary" href="#order">Start an Order</a><a className="btn secondary" href="#services">Explore Services</a><a className="btn secondary" href="/partners">Become a Partner</a></div></div></section>
       {referralCode && <section className="section container" style={{paddingBottom:0}}><div className="notice"><strong>Partner referral recorded.</strong> Your order will be attributed to referral code <strong>{referralCode}</strong> where eligible under the partner programme.</div></section>}
+      <SpecialServicePoster />
       <section id="services" className="section container"><h2>What we deliver</h2><div className="grid">{services.map(([title, text]) => <article className="card" key={title}><h3>{title}</h3><p>{text}</p></article>)}</div></section>
       <section id="order" className="section"><div className="container order"><div className="card"><h2>Academic Document Printing</h2><p>Upload your work for professional review and printing. <strong>Maximum submission: 20 pages.</strong> The print shop reviews formatting before production.</p>
         <form onSubmit={submit}>
