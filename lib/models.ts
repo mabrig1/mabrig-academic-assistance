@@ -24,6 +24,7 @@ const orderSchema = new Schema({
   referralCode: { type: String, default: null, index: true },
   status: { type: String, default: "NEW" },
   instructions: { type: String, required: true },
+  pastedContent: { type: String, default: null },
   quotedAmount: { type: Number, default: null },
   currency: { type: String, default: "NGN" },
   deadline: { type: Date, default: null },
