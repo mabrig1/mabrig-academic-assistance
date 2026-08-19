@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Delivery, Order, OrderFile, Service, User } from "@/lib/models";
 import { calculateQuote } from "@/lib/pricing";
+import { extractDocumentText } from "@/lib/extract-document-text";
 
 export const runtime = "nodejs";
 
 const MAX_PAGES = 20;
 const MAX_PASTED_CHARS = 100_000;
+const MAX_CONVERTIBLE_CHARS = 120_000;
+const MAX_FILE_BYTES = 4_000_000;
+
 type PrintOption = "DIGITAL_ONLY" | "PRINT_ONLY" | "DIGITAL_AND_PRINT" | "DIGITAL_PRINT_DELIVERY";
 type PrintType = "BLACK_WHITE" | "COLOUR";
 type BindingType = "NONE" | "SPIRAL" | "SOFT" | "HARD";
@@ -15,6 +19,8 @@ const PRINT_OPTIONS: readonly PrintOption[] = ["DIGITAL_ONLY", "PRINT_ONLY", "DI
 const PRINT_TYPES: readonly PrintType[] = ["BLACK_WHITE", "COLOUR"];
 const BINDINGS: readonly BindingType[] = ["NONE", "SPIRAL", "SOFT", "HARD"];
 const ALLOWED_FILE_TYPES = new Set([
+  "text/plain",
+  "text/markdown",
   "application/pdf",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -23,7 +29,6 @@ const ALLOWED_FILE_TYPES = new Set([
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ]);
-const MAX_FILE_BYTES = 25 * 1024 * 1024;
 
 export async function POST(request: Request) {
   try {
@@ -47,7 +52,7 @@ export async function POST(request: Request) {
     const binding: BindingType = BINDINGS.includes(rawBinding as BindingType) ? rawBinding as BindingType : "NONE";
     const deliveryLocation = String(form.get("deliveryLocation") || "").trim();
     const deliveryNote = String(form.get("deliveryNote") || "").trim();
-    const requestedFormat = String(form.get("requestedFormat") || "PDF").trim();
+    const requestedFormat = String(form.get("requestedFormat") || "DOCX").trim();
     const spacing = String(form.get("spacing") || "1.5").trim();
     const font = String(form.get("font") || "Times New Roman").trim();
     const fontSize = Number(form.get("fontSize") || 12);
@@ -64,9 +69,30 @@ export async function POST(request: Request) {
     if (printOption === "DIGITAL_PRINT_DELIVERY" && !deliveryLocation) return NextResponse.json({ error: "Choose a delivery location." }, { status: 400 });
     if (!hasFile && !pastedContent) return NextResponse.json({ error: "Upload a file or paste your document text before submitting." }, { status: 400 });
     if (pastedContent.length > MAX_PASTED_CHARS) return NextResponse.json({ error: "Pasted content is too long. Keep it within the 20-page submission limit." }, { status: 413 });
+
     if (hasFile) {
-      if (file.size > MAX_FILE_BYTES) return NextResponse.json({ error: "Uploaded file must not exceed 25MB." }, { status: 413 });
-      if (file.type && !ALLOWED_FILE_TYPES.has(file.type)) return NextResponse.json({ error: "Unsupported file type. Upload PDF, Word, PowerPoint or Excel." }, { status: 400 });
+      if (file.size > MAX_FILE_BYTES) return NextResponse.json({ error: "For instant conversion, uploads must be 4MB or smaller. Paste the text instead, or use a smaller file." }, { status: 413 });
+      if (file.type && !ALLOWED_FILE_TYPES.has(file.type)) return NextResponse.json({ error: "Unsupported file type. Upload TXT, PDF, Word, PowerPoint or Excel." }, { status: 400 });
+    }
+
+    let documentText = pastedContent;
+    let conversionSource: "PASTE" | "TEXT" | "DOCX" | "PDF" | "UNSUPPORTED" | null = pastedContent ? "PASTE" : null;
+    let conversionWarning: string | null = null;
+
+    if (hasFile && !documentText) {
+      try {
+        const extracted = await extractDocumentText(file);
+        documentText = (extracted.text || "").slice(0, MAX_CONVERTIBLE_CHARS);
+        conversionSource = extracted.source;
+        conversionWarning = extracted.warning || null;
+        if (extracted.text && extracted.text.length > MAX_CONVERTIBLE_CHARS) {
+          conversionWarning = "Only the first part of this upload was retained for automatic Word conversion because it exceeded the conversion text limit.";
+        }
+      } catch (error) {
+        console.error("Document text extraction failed", error);
+        conversionSource = "UNSUPPORTED";
+        conversionWarning = "Automatic text extraction failed. The print shop can still handle the order manually or the student can paste the text for instant Word conversion.";
+      }
     }
 
     const service = await Service.findOneAndUpdate({ name: serviceName }, { $setOnInsert: { name: serviceName } }, { upsert: true, new: true });
@@ -77,13 +103,50 @@ export async function POST(request: Request) {
     const orderNumber = `MAB-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${Math.floor(10000 + Math.random() * 90000)}`;
     const quotedAmount = calculateQuote({ service: serviceName, printOption, printType, copies, pages, binding, delivery: printOption === "DIGITAL_PRINT_DELIVERY" });
 
-    const order = await Order.create({ orderNumber, userId: user._id, serviceId: service._id, referralCode, instructions, pastedContent: pastedContent || null, quotedAmount, printOption, printType, copies, pages, binding, requestedFormat, spacing, font, fontSize, citations, references, coverPage, conversionRequested });
+    const order = await Order.create({
+      orderNumber,
+      userId: user._id,
+      serviceId: service._id,
+      referralCode,
+      instructions,
+      pastedContent: documentText || null,
+      conversionSource,
+      conversionWarning,
+      quotedAmount,
+      printOption,
+      printType,
+      copies,
+      pages,
+      binding,
+      requestedFormat,
+      spacing,
+      font,
+      fontSize,
+      citations,
+      references,
+      coverPage,
+      conversionRequested,
+    });
+
     if (hasFile) await OrderFile.create({ orderId: order._id, fileName: file.name, storageKey: `pending/${orderNumber}/${file.name}`, mimeType: file.type || null, sizeBytes: file.size });
     if (printOption === "DIGITAL_PRINT_DELIVERY") await Delivery.create({ orderId: order._id, location: deliveryLocation, addressNote: deliveryNote || null });
 
-    return NextResponse.json({ ok: true, orderId: order.orderNumber, quotedAmount, currency: "NGN", emailAvailable: Boolean(user.email), referralCode, status: order.status, maxPages: MAX_PAGES, source: hasFile ? (pastedContent ? "FILE_AND_PASTE" : "FILE") : "PASTE" });
+    return NextResponse.json({
+      ok: true,
+      orderId: order.orderNumber,
+      quotedAmount,
+      currency: "NGN",
+      emailAvailable: Boolean(user.email),
+      referralCode,
+      status: order.status,
+      maxPages: MAX_PAGES,
+      conversionReady: Boolean(documentText),
+      conversionSource,
+      conversionWarning,
+      source: hasFile ? (pastedContent ? "FILE_AND_PASTE" : "FILE") : "PASTE",
+    });
   } catch (error) {
     console.error("MongoDB order creation failed", error);
-    return NextResponse.json({ error: "We could not create the order. Check MONGODB_URI and try again." }, { status: 500 });
+    return NextResponse.json({ error: "We could not create the order. Check the service configuration and try again." }, { status: 500 });
   }
 }
