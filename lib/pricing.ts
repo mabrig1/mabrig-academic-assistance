@@ -16,12 +16,15 @@ export function calculateQuote(input: {
   printOption: PrintOption;
   printType: PrintType;
   copies: number;
+  pages: number;
   binding: BindingType;
   delivery: boolean;
 }) {
   let total = serviceBase[input.service] ?? 3000;
   if (input.printOption !== "DIGITAL_ONLY") {
-    total += input.copies * (input.printType === "COLOUR" ? 1500 : 700);
+    // Printing rate: ₦30/B&W page or ₦100/colour page.
+    const perPage = input.printType === "COLOUR" ? 100 : 30;
+    total += input.pages * input.copies * perPage;
     if (input.binding === "SPIRAL") total += 1500 * input.copies;
     if (input.binding === "SOFT") total += 2500 * input.copies;
     if (input.binding === "HARD") total += 5000 * input.copies;
