@@ -25,6 +25,8 @@ const orderSchema = new Schema({
   status: { type: String, default: "NEW" },
   instructions: { type: String, required: true },
   pastedContent: { type: String, default: null },
+  conversionSource: { type: String, enum: ["PASTE", "TEXT", "DOCX", "PDF", "UNSUPPORTED", null], default: null },
+  conversionWarning: { type: String, default: null },
   adminNote: { type: String, default: null },
   quotedAmount: { type: Number, default: null },
   currency: { type: String, default: "NGN" },
