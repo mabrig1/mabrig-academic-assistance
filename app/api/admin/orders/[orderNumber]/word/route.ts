@@ -11,6 +11,7 @@ type RouteContext = {
 
 type OrderDoc = {
   orderNumber?: string;
+  documentTitle?: string | null;
   userId?: unknown;
   serviceId?: unknown;
   pastedContent?: string | null;
@@ -51,10 +52,11 @@ export async function GET(_request: Request, context: RouteContext) {
 
     const user = userResult as { name?: string } | null;
     const service = serviceResult as { name?: string } | null;
+    const title = order.documentTitle || service?.name || "Academic Document";
 
     const buffer = await buildAcademicWordDocument({
       text,
-      title: service?.name || "Academic Document",
+      title,
       studentName: user?.name || "",
       orderNumber: order.orderNumber || orderNumber,
       font: order.font || "Times New Roman",
@@ -64,7 +66,7 @@ export async function GET(_request: Request, context: RouteContext) {
       references: Boolean(order.references),
     });
 
-    const filename = safeFilename(`${order.orderNumber || orderNumber}-${user?.name || "student"}.docx`);
+    const filename = safeFilename(`${title}-${user?.name || "student"}-${order.orderNumber || orderNumber}.docx`);
     return new Response(new Uint8Array(buffer), {
       status: 200,
       headers: {
