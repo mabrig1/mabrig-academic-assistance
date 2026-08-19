@@ -34,6 +34,8 @@ type OrderRow = {
   referralCode?: string | null;
   instructions?: string;
   pastedContent?: string | null;
+  conversionSource?: string | null;
+  conversionWarning?: string | null;
   adminNote?: string | null;
   quotedAmount?: number | null;
   currency?: string;
@@ -128,15 +130,17 @@ export default async function AdminPage() {
         <div>
           <span className="badge">MABRIG PRINT SHOP • PRIVATE ADMIN</span>
           <h1>Printing Operations Dashboard</h1>
-          <p>Review student documents, formatting requests, payment details and production status.</p>
+          <p>Review student documents, convert text to Word, manage formatting requests, payment details and production status.</p>
         </div>
         <div className="actions">
+          <a className="btn conversion-btn" href="/admin/converter">⚡ Word Conversion Studio</a>
           <a className="btn secondary" href="/">Student Site</a>
           <a className="btn secondary" href="/academic-printing">Printing Service</a>
         </div>
       </header>
 
       <section className="admin-metrics">
+        <article className="metric-card power-metric"><span>DOCUMENT SUPERPOWER</span><strong>TEXT → WORD</strong><small>Format and convert from the dashboard</small></article>
         <article className="metric-card"><span>Total Orders</span><strong>{total}</strong></article>
         <article className="metric-card"><span>Students</span><strong>{students}</strong></article>
         {WORKFLOW_STATUSES.map((status, index) => (
@@ -158,6 +162,7 @@ export default async function AdminPage() {
           const content = order.pastedContent?.trim() || "";
           const currentStatus = order.status || "NEW";
           const selectableStatus = ALL_STATUSES.has(currentStatus) ? currentStatus : "NEW";
+          const conversionReady = Boolean(content && order.orderNumber);
 
           return (
             <article className="admin-order-card" key={String(order._id)}>
@@ -179,11 +184,29 @@ export default async function AdminPage() {
                 <div><span>Print</span><strong>{label(order.printType)} • {label(order.printOption)}</strong></div>
                 <div><span>Binding</span><strong>{label(order.binding)}</strong></div>
                 <div><span>Formatting</span><strong>{order.font || "Times New Roman"} {order.fontSize || 12}pt • {order.spacing || "1.5"} spacing</strong></div>
-                <div><span>Output</span><strong>{order.requestedFormat || "PDF"}</strong></div>
+                <div><span>Requested output</span><strong>{order.requestedFormat || "DOCX"}</strong></div>
                 <div><span>Academic options</span><strong>{[order.citations && "Citations", order.references && "References", order.coverPage && "Cover page", order.conversionRequested && "Convert/format"].filter(Boolean).join(" • ") || "None selected"}</strong></div>
+                <div><span>Conversion source</span><strong>{order.conversionSource ? label(order.conversionSource) : content ? "PASTE / LEGACY TEXT" : "NOT READY"}</strong></div>
                 <div><span>Payment</span><strong>{order.payment?.status || "NO PAYMENT RECORD"}</strong>{order.payment?.reference && <small>{order.payment.reference}</small>}</div>
                 <div><span>Delivery</span><strong>{order.delivery ? `${order.delivery.location || "Campus"} • ${order.delivery.status || "PENDING"}` : "No delivery"}</strong>{order.delivery?.addressNote && <small>{order.delivery.addressNote}</small>}</div>
                 <div><span>Submitted</span><strong>{order.createdAt ? new Date(order.createdAt).toLocaleString("en-NG") : "—"}</strong></div>
+              </div>
+
+              <div className={`conversion-panel ${conversionReady ? "conversion-panel-ready" : ""}`}>
+                <div>
+                  <span className="conversion-power-badge">⚡ WORD CONVERSION ENGINE</span>
+                  <h4>{conversionReady ? "This order is ready for instant Word generation" : "Automatic Word generation is not ready for this order"}</h4>
+                  <p>
+                    {conversionReady
+                      ? `Generate a clean .docx using ${order.font || "Times New Roman"}, ${order.fontSize || 12}pt and ${order.spacing || "1.5"} spacing.`
+                      : "Older uploads or unsupported file types may not contain stored convertible text. Use the Conversion Studio and paste the text manually."}
+                  </p>
+                  {order.conversionWarning && <small className="conversion-warning">{order.conversionWarning}</small>}
+                </div>
+                <div className="conversion-panel-actions">
+                  {conversionReady && <a className="btn conversion-btn" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/word`}>Generate Formatted Word (.docx)</a>}
+                  <a className="btn secondary" href="/admin/converter">Open Conversion Studio</a>
+                </div>
               </div>
 
               <div className="admin-document-row">
@@ -204,7 +227,7 @@ export default async function AdminPage() {
 
               {content && (
                 <details className="pasted-document">
-                  <summary>View pasted student document</summary>
+                  <summary>View convertible student document text</summary>
                   <div className="pasted-document-content">{content}</div>
                 </details>
               )}
