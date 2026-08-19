@@ -1,6 +1,6 @@
 {
   "name": "mabrig-academic-assistance",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,8 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "docx": "9.7.1",
+    "mammoth": "1.12.0",
     "mongoose": "8.18.0",
     "next": "15.5.21",
+    "pdf-parse": "2.4.5",
     "react": "19.1.1",
     "react-dom": "19.1.1"
   },
