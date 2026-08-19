@@ -3,6 +3,7 @@ type PrintType = "BLACK_WHITE" | "COLOUR";
 type BindingType = "NONE" | "SPIRAL" | "SOFT" | "HARD";
 
 const serviceBase: Record<string, number> = {
+  "Academic Document Printing": 1000,
   "Project & Thesis Formatting": 5000,
   "Research Assistance": 5000,
   "Assignment & Term-Paper Support": 3000,
@@ -22,7 +23,6 @@ export function calculateQuote(input: {
 }) {
   let total = serviceBase[input.service] ?? 3000;
   if (input.printOption !== "DIGITAL_ONLY") {
-    // Printing rate: ₦30/B&W page or ₦100/colour page.
     const perPage = input.printType === "COLOUR" ? 100 : 30;
     total += input.pages * input.copies * perPage;
     if (input.binding === "SPIRAL") total += 1500 * input.copies;
