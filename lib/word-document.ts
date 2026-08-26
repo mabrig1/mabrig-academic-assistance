@@ -1,9 +1,9 @@
 import {
   AlignmentType,
-  BorderStyle,
   Document,
   HeadingLevel,
   LevelFormat,
+  PageOrientation,
   Packer,
   Paragraph,
   TextRun,
@@ -28,8 +28,7 @@ type DocumentBlock =
   | { kind: "quote"; text: string }
   | { kind: "bullet"; text: string }
   | { kind: "checklist"; text: string; checked: boolean }
-  | { kind: "number"; text: string; group: number }
-  | { kind: "rule"; text: "" };
+  | { kind: "number"; text: string; group: number };
 
 function lineSpacing(value?: string) {
   if (value === "single") return 240;
@@ -68,6 +67,34 @@ function isReferenceHeading(value: string) {
   return /^(references|bibliography)$/i.test(stripMarkdownForHeading(value));
 }
 
+function isLabeledParagraph(value: string) {
+  return /^(?:\*\*|__)(?:keywords?|key insight|core mission|note|important|recommendation)s?\b/i.test(value);
+}
+
+function isStandaloneEmphasisHeading(value: string) {
+  const match = value.match(/^(?:\*\*|__)(.+?)(?:\*\*|__)$/);
+  if (!match) return null;
+  const text = match[1].trim();
+  return text.length <= 140 && /^(?:phase|part|step)\s+(?:[ivxlcdm]+|\d+)\b/i.test(text) ? text : null;
+}
+
+function isStructuralLine(value: string) {
+  return (
+    /^(?:#{1,6}\s+|[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+|>\s?|-{3,}$|\*{3,}$|_{3,}$)/.test(value) ||
+    Boolean(isStandaloneEmphasisHeading(value)) ||
+    isLabeledParagraph(value) ||
+    isHeading(value)
+  );
+}
+
+function shouldJoinWrappedLine(current: string, next: string) {
+  if (!next || isStructuralLine(next)) return false;
+  const visibleEnding = current.replace(/(?:\*\*|__|\*|_)+$/, "").trimEnd();
+  if (/[.!?]["'’”)}\]]*$/.test(visibleEnding)) return false;
+  if (/[,;:—–-]$/.test(visibleEnding)) return true;
+  return current.length >= 90 || /^[a-z]/.test(next);
+}
+
 function parseDocumentBlocks(value: string) {
   const lines = cleanText(value).split("\n");
   const blocks: DocumentBlock[] = [];
@@ -86,7 +113,8 @@ function parseDocumentBlocks(value: string) {
     previousKind = "paragraph";
   };
 
-  for (const rawLine of lines) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index];
     const line = rawLine.trim();
     if (!line) {
       flushParagraph();
@@ -103,7 +131,6 @@ function parseDocumentBlocks(value: string) {
     if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line)) {
       flushParagraph();
       lastNumberValue = null;
-      blocks.push({ kind: "rule", text: "" });
       previousKind = "rule";
     } else if (markdownHeading) {
       flushParagraph();
@@ -140,6 +167,11 @@ function parseDocumentBlocks(value: string) {
       lastNumberValue = null;
       blocks.push({ kind: "quote", text: quote[1].trim() });
       previousKind = "quote";
+    } else if (isStandaloneEmphasisHeading(line)) {
+      flushParagraph();
+      lastNumberValue = null;
+      blocks.push({ kind: "heading", text: isStandaloneEmphasisHeading(line)!, level: 3 });
+      previousKind = "heading";
     } else if (isHeading(line)) {
       flushParagraph();
       lastNumberValue = null;
@@ -147,6 +179,8 @@ function parseDocumentBlocks(value: string) {
       previousKind = "heading";
     } else {
       paragraphLines.push(line);
+      const nextLine = lines[index + 1]?.trim() || "";
+      if (!shouldJoinWrappedLine(line, nextLine)) flushParagraph();
     }
   }
 
@@ -165,7 +199,7 @@ function inlineRuns(
   value: string,
   font: string,
   size: number,
-  base: { bold?: boolean; italics?: boolean } = {},
+  base: { bold?: boolean; italics?: boolean; color?: string } = {},
 ) {
   const text = normalizeInlineLinks(value);
   const pattern = /(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`)/g;
@@ -206,24 +240,27 @@ function makeBlockParagraph(options: {
   spacing: number;
   referenceMode: boolean;
   pageBreakBefore: boolean;
+  suppressFirstLineIndent: boolean;
 }) {
-  const { block, font, fontSize, spacing, referenceMode, pageBreakBefore } = options;
+  const {
+    block,
+    font,
+    fontSize,
+    spacing,
+    referenceMode,
+    pageBreakBefore,
+    suppressFirstLineIndent,
+  } = options;
   const normalSize = fontSize * 2;
-
-  if (block.kind === "rule") {
-    return new Paragraph({
-      pageBreakBefore,
-      spacing: { before: 120, after: 160 },
-      border: { bottom: { color: "B7B7B7", size: 6, space: 1, style: BorderStyle.SINGLE } },
-    });
-  }
 
   if (block.kind === "title") {
     return new Paragraph({
+      style: "AcademicTitle",
       pageBreakBefore,
       alignment: AlignmentType.CENTER,
-      spacing: { before: 240, after: 280, line: spacing },
-      children: inlineRuns(block.text, font, Math.max(normalSize + 8, 32), { bold: true }),
+      keepNext: true,
+      spacing: { before: 120, after: 300, line: spacing },
+      children: inlineRuns(block.text, font, Math.max(normalSize + 8, 32), { bold: true, color: "000000" }),
     });
   }
 
@@ -233,17 +270,25 @@ function makeBlockParagraph(options: {
       pageBreakBefore,
       heading: headingLevel(block.level),
       keepNext: true,
-      spacing: { before: block.level === 1 ? 260 : 200, after: 120, line: spacing },
-      children: inlineRuns(block.text, font, size, { bold: true }),
+      keepLines: true,
+      spacing: { before: block.level === 1 ? 280 : 220, after: 100, line: 240 },
+      children: inlineRuns(block.text, font, size, {
+        bold: true,
+        italics: block.level === 3,
+        color: "000000",
+      }),
     });
   }
 
   if (block.kind === "quote") {
     return new Paragraph({
       pageBreakBefore,
-      alignment: AlignmentType.JUSTIFIED,
+      style: "AcademicQuote",
+      alignment: AlignmentType.LEFT,
       indent: { left: 540, right: 360 },
-      spacing: { before: 80, after: 160, line: spacing },
+      spacing: { before: 80, after: 140, line: spacing },
+      keepLines: true,
+      widowControl: true,
       children: inlineRuns(block.text, font, normalSize, { italics: true }),
     });
   }
@@ -251,9 +296,12 @@ function makeBlockParagraph(options: {
   if (block.kind === "bullet") {
     return new Paragraph({
       pageBreakBefore,
+      style: "AcademicList",
       bullet: { level: 0 },
-      alignment: AlignmentType.JUSTIFIED,
-      spacing: { after: 80, line: spacing },
+      alignment: AlignmentType.LEFT,
+      spacing: { after: 60, line: spacing },
+      keepLines: true,
+      widowControl: true,
       children: inlineRuns(block.text, font, normalSize),
     });
   }
@@ -261,9 +309,12 @@ function makeBlockParagraph(options: {
   if (block.kind === "checklist") {
     return new Paragraph({
       pageBreakBefore,
+      style: "AcademicList",
       indent: { left: 720, hanging: 360 },
-      alignment: AlignmentType.JUSTIFIED,
-      spacing: { after: 80, line: spacing },
+      alignment: AlignmentType.LEFT,
+      spacing: { after: 60, line: spacing },
+      keepLines: true,
+      widowControl: true,
       children: [
         new TextRun({ text: block.checked ? "☒  " : "☐  ", font: "Arial", size: normalSize }),
         ...inlineRuns(block.text, font, normalSize),
@@ -274,18 +325,27 @@ function makeBlockParagraph(options: {
   if (block.kind === "number") {
     return new Paragraph({
       pageBreakBefore,
+      style: "AcademicList",
       numbering: { reference: `academic-numbering-${block.group}`, level: 0 },
-      alignment: AlignmentType.JUSTIFIED,
+      alignment: AlignmentType.LEFT,
       spacing: { after: 80, line: spacing },
+      keepLines: true,
+      widowControl: true,
       children: inlineRuns(block.text, font, normalSize),
     });
   }
 
   return new Paragraph({
     pageBreakBefore,
-    alignment: AlignmentType.JUSTIFIED,
-    spacing: { after: 160, line: spacing },
-    indent: referenceMode ? { left: 720, hanging: 720 } : undefined,
+    style: referenceMode ? "AcademicReference" : "AcademicBody",
+    alignment: referenceMode || block.text.length <= 100 ? AlignmentType.LEFT : AlignmentType.JUSTIFIED,
+    spacing: { after: 120, line: spacing },
+    indent: referenceMode
+      ? { left: 720, hanging: 720 }
+      : suppressFirstLineIndent || isLabeledParagraph(block.text)
+        ? undefined
+        : { firstLine: 720 },
+    widowControl: true,
     children: inlineRuns(block.text, font, normalSize),
   });
 }
@@ -304,6 +364,7 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
 
   const body: Paragraph[] = [];
   let referenceMode = false;
+  let previousBlockKind: DocumentBlock["kind"] | "" = "";
 
   if (options.coverPage) {
     body.push(new Paragraph({
@@ -340,7 +401,9 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
       spacing,
       referenceMode: Boolean(referenceMode && options.references && block.kind === "paragraph"),
       pageBreakBefore: Boolean(options.coverPage && index === 0),
+      suppressFirstLineIndent: previousBlockKind !== "paragraph",
     }));
+    previousBlockKind = block.kind;
   });
 
   const doc = new Document({
@@ -348,6 +411,73 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
     title: options.title || "Academic Document",
     description: options.orderNumber ? `Generated for ${options.orderNumber}` : "Generated academic document",
     compatibility: { doNotExpandShiftReturn: true },
+    styles: {
+      default: {
+        document: {
+          run: { font, size: fontSize * 2, color: "000000" },
+          paragraph: { alignment: AlignmentType.JUSTIFIED, spacing: { line: spacing, after: 120 } },
+        },
+        heading1: {
+          run: { font, size: Math.max(fontSize * 2 + 6, 30), bold: true, color: "000000" },
+          paragraph: { alignment: AlignmentType.LEFT, spacing: { before: 280, after: 100 }, keepNext: true },
+        },
+        heading2: {
+          run: { font, size: Math.max(fontSize * 2 + 4, 28), bold: true, color: "000000" },
+          paragraph: { alignment: AlignmentType.LEFT, spacing: { before: 240, after: 100 }, keepNext: true },
+        },
+        heading3: {
+          run: { font, size: Math.max(fontSize * 2 + 2, 26), bold: true, italics: true, color: "000000" },
+          paragraph: { alignment: AlignmentType.LEFT, spacing: { before: 220, after: 80 }, keepNext: true },
+        },
+      },
+      paragraphStyles: [
+        {
+          id: "AcademicTitle",
+          name: "Academic Title",
+          basedOn: "Normal",
+          next: "AcademicBody",
+          quickFormat: true,
+          run: { font, size: Math.max(fontSize * 2 + 8, 32), bold: true, color: "000000" },
+          paragraph: { alignment: AlignmentType.CENTER, spacing: { before: 120, after: 300, line: spacing }, keepNext: true },
+        },
+        {
+          id: "AcademicBody",
+          name: "Academic Body",
+          basedOn: "Normal",
+          next: "AcademicBody",
+          quickFormat: true,
+          run: { font, size: fontSize * 2, color: "000000" },
+          paragraph: { alignment: AlignmentType.JUSTIFIED, spacing: { after: 120, line: spacing } },
+        },
+        {
+          id: "AcademicList",
+          name: "Academic List",
+          basedOn: "Normal",
+          next: "AcademicList",
+          quickFormat: true,
+          run: { font, size: fontSize * 2, color: "000000" },
+          paragraph: { alignment: AlignmentType.LEFT, spacing: { after: 60, line: spacing } },
+        },
+        {
+          id: "AcademicQuote",
+          name: "Academic Quote",
+          basedOn: "Normal",
+          next: "AcademicBody",
+          quickFormat: true,
+          run: { font, size: fontSize * 2, italics: true, color: "000000" },
+          paragraph: { alignment: AlignmentType.LEFT, spacing: { before: 80, after: 140, line: spacing } },
+        },
+        {
+          id: "AcademicReference",
+          name: "Academic Reference",
+          basedOn: "Normal",
+          next: "AcademicReference",
+          quickFormat: true,
+          run: { font, size: fontSize * 2, color: "000000" },
+          paragraph: { alignment: AlignmentType.LEFT, spacing: { after: 80, line: spacing } },
+        },
+      ],
+    },
     numbering: {
       config: numberGroups.map(group => ({
         reference: `academic-numbering-${group}`,
@@ -363,6 +493,7 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
     sections: [{
       properties: {
         page: {
+          size: { width: 11906, height: 16838, orientation: PageOrientation.PORTRAIT },
           margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
         },
       },
