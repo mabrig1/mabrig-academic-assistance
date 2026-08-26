@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Order, Service, User } from "@/lib/models";
 import { buildAcademicWordDocument } from "@/lib/word-document";
+import {
+  DocumentTransformationError,
+  parseDocumentTransformationMode,
+  transformAcademicText,
+} from "@/lib/ai-document-transform";
 
 export const runtime = "nodejs";
 
@@ -20,6 +25,7 @@ type OrderDoc = {
   spacing?: string;
   coverPage?: boolean;
   references?: boolean;
+  transformationMode?: string;
 };
 
 function safeFilename(value: string) {
@@ -53,9 +59,11 @@ export async function GET(_request: Request, context: RouteContext) {
     const user = userResult as { name?: string } | null;
     const service = serviceResult as { name?: string } | null;
     const title = order.documentTitle || service?.name || "Academic Document";
+    const transformationMode = parseDocumentTransformationMode(order.transformationMode);
+    const transformed = await transformAcademicText({ text, title, mode: transformationMode });
 
     const buffer = await buildAcademicWordDocument({
-      text,
+      text: transformed.text,
       title,
       studentName: user?.name || "",
       orderNumber: order.orderNumber || orderNumber,
@@ -74,9 +82,13 @@ export async function GET(_request: Request, context: RouteContext) {
         "Content-Disposition": `attachment; filename="${filename}"`,
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
+        "X-Text-Transformation": transformationMode,
       },
     });
   } catch (error) {
+    if (error instanceof DocumentTransformationError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Order Word generation failed", error);
     return NextResponse.json({ error: "Unable to generate the Word document." }, { status: 500 });
   }

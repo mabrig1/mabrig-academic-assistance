@@ -52,6 +52,14 @@ export default function AdminConverterPage() {
                   <option value="double">Double</option>
                 </select>
               </label>
+              <label className="field">
+                <span>Text treatment</span>
+                <select name="transformationMode" defaultValue="proofread">
+                  <option value="proofread">Proofread &amp; improve clarity (AI)</option>
+                  <option value="rewrite">Rewrite for clarity and originality (AI)</option>
+                  <option value="format">Format only — keep the wording</option>
+                </select>
+              </label>
               <div className="field check-row">
                 <label><input type="checkbox" name="coverPage" /> Add cover page</label>
                 <label><input type="checkbox" name="references" /> Format references with hanging indent</label>
@@ -63,7 +71,7 @@ export default function AdminConverterPage() {
             </div>
 
             <div className="notice" style={{ marginTop: 16 }}>
-              <strong>Smart academic formatting:</strong> the converter applies 1-inch margins, justified body text, heading recognition, your selected font/spacing, optional cover page and optional reference hanging indents.
+              <strong>Smart academic conversion:</strong> AI modes genuinely improve or rewrite the wording before Word generation. Format-only mode preserves the wording but converts Markdown headings, emphasis, lists and quotations into real Word formatting.
             </div>
             <button className="btn primary conversion-download-btn" type="submit">⚡ Generate Formatted Word (.docx)</button>
           </form>

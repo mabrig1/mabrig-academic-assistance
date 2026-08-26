@@ -45,6 +45,7 @@ const orderSchema = new Schema({
   references: { type: Boolean, default: false },
   coverPage: { type: Boolean, default: false },
   conversionRequested: { type: Boolean, default: false },
+  transformationMode: { type: String, enum: ["format", "proofread", "rewrite"], default: "proofread" },
 }, { timestamps: true });
 
 const orderFileSchema = new Schema({

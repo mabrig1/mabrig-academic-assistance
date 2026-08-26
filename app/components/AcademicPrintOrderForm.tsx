@@ -96,6 +96,13 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         </label>
 
         <label className="field"><span>Font size</span><input name="fontSize" type="number" min="8" max="30" defaultValue="12" /></label>
+        <label className="field"><span>Text treatment</span>
+          <select name="transformationMode" defaultValue="proofread">
+            <option value="proofread">Proofread &amp; improve clarity (AI)</option>
+            <option value="rewrite">Rewrite for clarity and originality (AI)</option>
+            <option value="format">Format only — keep the wording</option>
+          </select>
+        </label>
         <label className="field"><span>Production</span>
           <select name="printOption" value={printOption} onChange={e => setPrintOption(e.target.value)}>
             <option value="DIGITAL_ONLY">Word conversion / digital processing only</option>
@@ -133,7 +140,7 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         <input type="hidden" name="referralCode" value={referralCode} />
       </div>
 
-      <div className="notice" style={{marginTop:16}}><strong>Word superpower:</strong> Times New Roman, 12pt and 1.5 spacing are selected by default. Pasted text and supported uploads can be turned into a clean .docx file for final printer review.</div>
+      <div className="notice" style={{marginTop:16}}><strong>Word superpower:</strong> Times New Roman, 12pt and 1.5 spacing are selected by default. Choose an AI mode to genuinely improve the wording, or Format only to keep every sentence while converting headings, emphasis and lists into clean Word formatting.</div>
       <div className="notice" style={{marginTop:10}}>Academic integrity: this service supports editing, formatting, proofreading and document production. Students remain responsible for assessed submissions.</div>
       <button className="btn primary" style={{marginTop:16}} type="submit" disabled={submitting}>{submitting ? "Preparing conversion..." : "Submit, Format & Convert to Word"}</button>
       {message && <p className="form-message" aria-live="polite">{message}</p>}

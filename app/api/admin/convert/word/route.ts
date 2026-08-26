@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  DocumentTransformationError,
+  parseDocumentTransformationMode,
+  transformAcademicText,
+} from "@/lib/ai-document-transform";
 import { buildAcademicWordDocument } from "@/lib/word-document";
 
 export const runtime = "nodejs";
@@ -20,12 +25,14 @@ export async function POST(request: Request) {
     const spacing = String(form.get("spacing") || "1.5");
     const coverPage = form.get("coverPage") === "on";
     const references = form.get("references") === "on";
+    const transformationMode = parseDocumentTransformationMode(form.get("transformationMode"));
 
     if (!text) return NextResponse.json({ error: "Paste text before converting to Word." }, { status: 400 });
     if (text.length > MAX_CHARS) return NextResponse.json({ error: "Text is too long for the instant converter." }, { status: 413 });
 
+    const transformed = await transformAcademicText({ text, title, mode: transformationMode });
     const buffer = await buildAcademicWordDocument({
-      text,
+      text: transformed.text,
       title,
       studentName,
       font,
@@ -42,9 +49,13 @@ export async function POST(request: Request) {
         "Content-Disposition": `attachment; filename="${filename}"`,
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
+        "X-Text-Transformation": transformationMode,
       },
     });
   } catch (error) {
+    if (error instanceof DocumentTransformationError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Standalone Word conversion failed", error);
     return NextResponse.json({ error: "Unable to generate the Word document." }, { status: 500 });
   }
