@@ -8,6 +8,7 @@ import {
   Paragraph,
   TextRun,
 } from "docx";
+import type { BodyAlignment, ParagraphIndentation } from "./document-format-options";
 
 export type WordDocumentOptions = {
   text: string;
@@ -19,6 +20,10 @@ export type WordDocumentOptions = {
   spacing?: string;
   coverPage?: boolean;
   references?: boolean;
+  paragraphIndentation?: ParagraphIndentation;
+  bodyAlignment?: BodyAlignment;
+  boldHeadings?: boolean;
+  cleanSpecialCharacters?: boolean;
 };
 
 type DocumentBlock =
@@ -36,12 +41,32 @@ function lineSpacing(value?: string) {
   return 360;
 }
 
-function cleanText(value: string) {
-  return value
+function cleanText(value: string, cleanSpecialCharacters: boolean) {
+  const normalized = value
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
-    .replace(/\u0000/g, "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, "")
+    .replace(/\u00A0/g, " ");
+
+  if (!cleanSpecialCharacters) return normalized.trim();
+  return normalized
+    .replace(/â€™/g, "’")
+    .replace(/â€œ/g, "“")
+    .replace(/â€(?:|�)/g, "”")
+    .replace(/â€“/g, "–")
+    .replace(/â€”/g, "—")
+    .replace(/Â/g, "")
     .trim();
+}
+
+function cleanPlainSegment(value: string, cleanSpecialCharacters: boolean) {
+  if (!cleanSpecialCharacters) return value;
+  return value
+    .replace(/(^|[\s([{])#{1,6}\s*/g, "$1")
+    .replace(/(^|[\s([{])(?:\*{1,3}|_{2,3}|`{1,3}|~{2})/g, "$1")
+    .replace(/(?:\*{1,3}|_{2,3}|`{1,3}|~{2})(?=\s|$|[.,;:!?)}\]])/g, "")
+    .replace(/(^|\s)[•●▪◆■►▶★☆✓✔✦✧]+\s*/g, "$1");
 }
 
 function stripMarkdownForHeading(value: string) {
@@ -95,8 +120,8 @@ function shouldJoinWrappedLine(current: string, next: string) {
   return current.length >= 90 || /^[a-z]/.test(next);
 }
 
-function parseDocumentBlocks(value: string) {
-  const lines = cleanText(value).split("\n");
+function parseDocumentBlocks(value: string, cleanSpecialCharacters: boolean) {
+  const lines = cleanText(value, cleanSpecialCharacters).split("\n");
   const blocks: DocumentBlock[] = [];
   let paragraphLines: string[] = [];
   let activeNumberGroup = 0;
@@ -199,6 +224,7 @@ function inlineRuns(
   value: string,
   font: string,
   size: number,
+  cleanSpecialCharacters: boolean,
   base: { bold?: boolean; italics?: boolean; color?: string } = {},
 ) {
   const text = normalizeInlineLinks(value);
@@ -209,7 +235,12 @@ function inlineRuns(
   for (const match of text.matchAll(pattern)) {
     const index = match.index ?? 0;
     if (index > cursor) {
-      runs.push(new TextRun({ text: text.slice(cursor, index), font, size, ...base }));
+      runs.push(new TextRun({
+        text: cleanPlainSegment(text.slice(cursor, index), cleanSpecialCharacters),
+        font,
+        size,
+        ...base,
+      }));
     }
 
     const token = match[0];
@@ -223,8 +254,12 @@ function inlineRuns(
     cursor = index + token.length;
   }
 
-  if (cursor < text.length) runs.push(new TextRun({ text: text.slice(cursor), font, size, ...base }));
-  return runs.length ? runs : [new TextRun({ text, font, size, ...base })];
+  if (cursor < text.length) {
+    runs.push(new TextRun({ text: cleanPlainSegment(text.slice(cursor), cleanSpecialCharacters), font, size, ...base }));
+  }
+  return runs.length
+    ? runs
+    : [new TextRun({ text: cleanPlainSegment(text, cleanSpecialCharacters), font, size, ...base })];
 }
 
 function headingLevel(level: number) {
@@ -240,7 +275,10 @@ function makeBlockParagraph(options: {
   spacing: number;
   referenceMode: boolean;
   pageBreakBefore: boolean;
-  suppressFirstLineIndent: boolean;
+  paragraphIndentation: ParagraphIndentation;
+  bodyAlignment: BodyAlignment;
+  boldHeadings: boolean;
+  cleanSpecialCharacters: boolean;
 }) {
   const {
     block,
@@ -249,7 +287,10 @@ function makeBlockParagraph(options: {
     spacing,
     referenceMode,
     pageBreakBefore,
-    suppressFirstLineIndent,
+    paragraphIndentation,
+    bodyAlignment,
+    boldHeadings,
+    cleanSpecialCharacters,
   } = options;
   const normalSize = fontSize * 2;
 
@@ -260,7 +301,7 @@ function makeBlockParagraph(options: {
       alignment: AlignmentType.CENTER,
       keepNext: true,
       spacing: { before: 120, after: 300, line: spacing },
-      children: inlineRuns(block.text, font, Math.max(normalSize + 8, 32), { bold: true, color: "000000" }),
+      children: inlineRuns(block.text, font, Math.max(normalSize + 8, 32), cleanSpecialCharacters, { bold: true, color: "000000" }),
     });
   }
 
@@ -272,8 +313,8 @@ function makeBlockParagraph(options: {
       keepNext: true,
       keepLines: true,
       spacing: { before: block.level === 1 ? 280 : 220, after: 100, line: 240 },
-      children: inlineRuns(block.text, font, size, {
-        bold: true,
+      children: inlineRuns(block.text, font, size, cleanSpecialCharacters, {
+        bold: boldHeadings,
         italics: block.level === 3,
         color: "000000",
       }),
@@ -289,7 +330,7 @@ function makeBlockParagraph(options: {
       spacing: { before: 80, after: 140, line: spacing },
       keepLines: true,
       widowControl: true,
-      children: inlineRuns(block.text, font, normalSize, { italics: true }),
+      children: inlineRuns(block.text, font, normalSize, cleanSpecialCharacters, { italics: true }),
     });
   }
 
@@ -302,7 +343,7 @@ function makeBlockParagraph(options: {
       spacing: { after: 60, line: spacing },
       keepLines: true,
       widowControl: true,
-      children: inlineRuns(block.text, font, normalSize),
+      children: inlineRuns(block.text, font, normalSize, cleanSpecialCharacters),
     });
   }
 
@@ -317,7 +358,7 @@ function makeBlockParagraph(options: {
       widowControl: true,
       children: [
         new TextRun({ text: block.checked ? "☒  " : "☐  ", font: "Arial", size: normalSize }),
-        ...inlineRuns(block.text, font, normalSize),
+        ...inlineRuns(block.text, font, normalSize, cleanSpecialCharacters),
       ],
     });
   }
@@ -331,40 +372,45 @@ function makeBlockParagraph(options: {
       spacing: { after: 80, line: spacing },
       keepLines: true,
       widowControl: true,
-      children: inlineRuns(block.text, font, normalSize),
+      children: inlineRuns(block.text, font, normalSize, cleanSpecialCharacters),
     });
   }
 
   return new Paragraph({
     pageBreakBefore,
     style: referenceMode ? "AcademicReference" : "AcademicBody",
-    alignment: referenceMode || block.text.length <= 100 ? AlignmentType.LEFT : AlignmentType.JUSTIFIED,
+    alignment: referenceMode || bodyAlignment === "left"
+      ? AlignmentType.LEFT
+      : AlignmentType.JUSTIFIED,
     spacing: { after: 120, line: spacing },
     indent: referenceMode
       ? { left: 720, hanging: 720 }
-      : suppressFirstLineIndent || isLabeledParagraph(block.text)
+      : paragraphIndentation === "none" || isLabeledParagraph(block.text)
         ? undefined
-        : { firstLine: 720 },
+        : { firstLine: paragraphIndentation === "first-line-wide" ? 1440 : 720 },
     widowControl: true,
-    children: inlineRuns(block.text, font, normalSize),
+    children: inlineRuns(block.text, font, normalSize, cleanSpecialCharacters),
   });
 }
 
 export async function buildAcademicWordDocument(options: WordDocumentOptions) {
-  const text = cleanText(options.text);
+  const cleanSpecialCharacters = options.cleanSpecialCharacters !== false;
+  const text = cleanText(options.text, cleanSpecialCharacters);
   if (!text) throw new Error("No document text was supplied for Word conversion.");
 
   const font = (options.font || "Times New Roman").trim() || "Times New Roman";
   const fontSize = Math.min(30, Math.max(8, Number(options.fontSize || 12)));
   const spacing = lineSpacing(options.spacing);
-  const blocks = parseDocumentBlocks(text);
+  const paragraphIndentation = options.paragraphIndentation || "first-line";
+  const bodyAlignment = options.bodyAlignment || "justified";
+  const boldHeadings = options.boldHeadings !== false;
+  const blocks = parseDocumentBlocks(text, cleanSpecialCharacters);
   const numberGroups = Array.from(new Set(
     blocks.filter((block): block is Extract<DocumentBlock, { kind: "number" }> => block.kind === "number").map(block => block.group),
   ));
 
   const body: Paragraph[] = [];
   let referenceMode = false;
-  let previousBlockKind: DocumentBlock["kind"] | "" = "";
 
   if (options.coverPage) {
     body.push(new Paragraph({
@@ -401,9 +447,11 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
       spacing,
       referenceMode: Boolean(referenceMode && options.references && block.kind === "paragraph"),
       pageBreakBefore: Boolean(options.coverPage && index === 0),
-      suppressFirstLineIndent: previousBlockKind !== "paragraph",
+      paragraphIndentation,
+      bodyAlignment,
+      boldHeadings,
+      cleanSpecialCharacters,
     }));
-    previousBlockKind = block.kind;
   });
 
   const doc = new Document({
@@ -418,15 +466,15 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
           paragraph: { alignment: AlignmentType.JUSTIFIED, spacing: { line: spacing, after: 120 } },
         },
         heading1: {
-          run: { font, size: Math.max(fontSize * 2 + 6, 30), bold: true, color: "000000" },
+          run: { font, size: Math.max(fontSize * 2 + 6, 30), bold: boldHeadings, color: "000000" },
           paragraph: { alignment: AlignmentType.LEFT, spacing: { before: 280, after: 100 }, keepNext: true },
         },
         heading2: {
-          run: { font, size: Math.max(fontSize * 2 + 4, 28), bold: true, color: "000000" },
+          run: { font, size: Math.max(fontSize * 2 + 4, 28), bold: boldHeadings, color: "000000" },
           paragraph: { alignment: AlignmentType.LEFT, spacing: { before: 240, after: 100 }, keepNext: true },
         },
         heading3: {
-          run: { font, size: Math.max(fontSize * 2 + 2, 26), bold: true, italics: true, color: "000000" },
+          run: { font, size: Math.max(fontSize * 2 + 2, 26), bold: boldHeadings, italics: true, color: "000000" },
           paragraph: { alignment: AlignmentType.LEFT, spacing: { before: 220, after: 80 }, keepNext: true },
         },
       },
@@ -447,7 +495,10 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
           next: "AcademicBody",
           quickFormat: true,
           run: { font, size: fontSize * 2, color: "000000" },
-          paragraph: { alignment: AlignmentType.JUSTIFIED, spacing: { after: 120, line: spacing } },
+          paragraph: {
+            alignment: bodyAlignment === "left" ? AlignmentType.LEFT : AlignmentType.JUSTIFIED,
+            spacing: { after: 120, line: spacing },
+          },
         },
         {
           id: "AcademicList",

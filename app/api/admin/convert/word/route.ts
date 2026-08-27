@@ -4,6 +4,11 @@ import {
   parseDocumentTransformationMode,
   transformAcademicText,
 } from "@/lib/ai-document-transform";
+import {
+  formToggleEnabled,
+  parseBodyAlignment,
+  parseParagraphIndentation,
+} from "@/lib/document-format-options";
 import { buildAcademicWordDocument } from "@/lib/word-document";
 
 export const runtime = "nodejs";
@@ -26,6 +31,10 @@ export async function POST(request: Request) {
     const coverPage = form.get("coverPage") === "on";
     const references = form.get("references") === "on";
     const transformationMode = parseDocumentTransformationMode(form.get("transformationMode"));
+    const bodyAlignment = parseBodyAlignment(form.get("bodyAlignment"));
+    const paragraphIndentation = parseParagraphIndentation(form.get("paragraphIndentation"));
+    const boldHeadings = formToggleEnabled(form, "boldHeadings");
+    const cleanSpecialCharacters = formToggleEnabled(form, "cleanSpecialCharacters");
 
     if (!text) return NextResponse.json({ error: "Paste text before converting to Word." }, { status: 400 });
     if (text.length > MAX_CHARS) return NextResponse.json({ error: "Text is too long for the instant converter." }, { status: 413 });
@@ -40,6 +49,10 @@ export async function POST(request: Request) {
       spacing,
       coverPage,
       references,
+      bodyAlignment,
+      paragraphIndentation,
+      boldHeadings,
+      cleanSpecialCharacters,
     });
 
     const filename = safeFilename(`${title || "academic-document"}.docx`);
@@ -50,6 +63,7 @@ export async function POST(request: Request) {
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
         "X-Text-Transformation": transformationMode,
+        "X-Text-Changed": transformed.changed ? "true" : "false",
       },
     });
   } catch (error) {

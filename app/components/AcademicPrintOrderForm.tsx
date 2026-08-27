@@ -103,6 +103,19 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
             <option value="format">Format only — keep the wording</option>
           </select>
         </label>
+        <label className="field"><span>Body alignment</span>
+          <select name="bodyAlignment" defaultValue="justified">
+            <option value="justified">Justified (academic)</option>
+            <option value="left">Left aligned</option>
+          </select>
+        </label>
+        <label className="field"><span>Paragraph indentation</span>
+          <select name="paragraphIndentation" defaultValue="first-line">
+            <option value="first-line">First line — 0.5 inch</option>
+            <option value="first-line-wide">First line — 1 inch</option>
+            <option value="none">No first-line indentation</option>
+          </select>
+        </label>
         <label className="field"><span>Production</span>
           <select name="printOption" value={printOption} onChange={e => setPrintOption(e.target.value)}>
             <option value="DIGITAL_ONLY">Word conversion / digital processing only</option>
@@ -130,6 +143,10 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         <label className="field full"><span>Option 2 — Paste your work here for instant Word conversion</span><textarea name="pastedContent" rows={12} maxLength={100000} placeholder="Paste the text of your assignment, term paper, project or other document here. The print shop can generate a formatted Word document from this text." /></label>
 
         <div className="field full check-row">
+          <input type="hidden" name="boldHeadings" value="off" />
+          <input type="hidden" name="cleanSpecialCharacters" value="off" />
+          <label><input name="boldHeadings" value="on" type="checkbox" defaultChecked /> Bold headings</label>
+          <label><input name="cleanSpecialCharacters" value="on" type="checkbox" defaultChecked /> Remove stray special / Markdown characters</label>
           <label><input name="citations" type="checkbox" /> Citations</label>
           <label><input name="references" type="checkbox" /> References / hanging indent</label>
           <label><input name="coverPage" type="checkbox" /> Cover page</label>

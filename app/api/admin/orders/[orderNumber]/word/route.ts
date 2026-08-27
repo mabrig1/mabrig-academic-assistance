@@ -7,6 +7,7 @@ import {
   parseDocumentTransformationMode,
   transformAcademicText,
 } from "@/lib/ai-document-transform";
+import { parseBodyAlignment, parseParagraphIndentation } from "@/lib/document-format-options";
 
 export const runtime = "nodejs";
 
@@ -26,6 +27,10 @@ type OrderDoc = {
   coverPage?: boolean;
   references?: boolean;
   transformationMode?: string;
+  bodyAlignment?: string;
+  paragraphIndentation?: string;
+  boldHeadings?: boolean;
+  cleanSpecialCharacters?: boolean;
 };
 
 function safeFilename(value: string) {
@@ -72,6 +77,10 @@ export async function GET(_request: Request, context: RouteContext) {
       spacing: order.spacing || "1.5",
       coverPage: Boolean(order.coverPage),
       references: Boolean(order.references),
+      bodyAlignment: parseBodyAlignment(order.bodyAlignment),
+      paragraphIndentation: parseParagraphIndentation(order.paragraphIndentation),
+      boldHeadings: order.boldHeadings !== false,
+      cleanSpecialCharacters: order.cleanSpecialCharacters !== false,
     });
 
     const filename = safeFilename(`${title}-${user?.name || "student"}-${order.orderNumber || orderNumber}.docx`);
@@ -83,6 +92,7 @@ export async function GET(_request: Request, context: RouteContext) {
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
         "X-Text-Transformation": transformationMode,
+        "X-Text-Changed": transformed.changed ? "true" : "false",
       },
     });
   } catch (error) {
