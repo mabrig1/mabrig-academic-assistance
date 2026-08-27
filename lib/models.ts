@@ -38,7 +38,7 @@ const orderSchema = new Schema({
   pages: { type: Number, min: 1, max: 20, default: 1 },
   binding: { type: String, default: "NONE" },
   requestedFormat: { type: String, default: "DOCX" },
-  spacing: { type: String, default: "1.5" },
+  spacing: { type: String, enum: ["single", "1.15", "1.5", "double"], default: "1.5" },
   font: { type: String, default: "Times New Roman" },
   fontSize: { type: Number, default: 12 },
   citations: { type: Boolean, default: false },
@@ -50,6 +50,13 @@ const orderSchema = new Schema({
   paragraphIndentation: { type: String, enum: ["none", "first-line", "first-line-wide"], default: "first-line" },
   boldHeadings: { type: Boolean, default: true },
   cleanSpecialCharacters: { type: Boolean, default: true },
+  pageNumberPosition: { type: String, enum: ["none", "header-right", "footer-center", "footer-right"], default: "footer-center" },
+  headingPreset: { type: String, enum: ["academic", "apa7", "compact"], default: "academic" },
+  headerText: { type: String, default: null },
+  footerText: { type: String, default: null },
+  automaticTableOfContents: { type: Boolean, default: false },
+  apaFormatting: { type: Boolean, default: false },
+  widowOrphanControl: { type: Boolean, default: true },
 }, { timestamps: true });
 
 const orderFileSchema = new Schema({

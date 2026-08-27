@@ -1,14 +1,30 @@
 import {
   AlignmentType,
+  BorderStyle,
   Document,
+  Footer,
+  Header,
   HeadingLevel,
   LevelFormat,
+  PageNumber,
   PageOrientation,
   Packer,
   Paragraph,
+  Table,
+  TableCell,
+  TableLayoutType,
+  TableOfContents,
+  TableRow,
   TextRun,
+  WidthType,
 } from "docx";
-import type { BodyAlignment, ParagraphIndentation } from "./document-format-options";
+import type {
+  BodyAlignment,
+  DocumentLineSpacing,
+  HeadingPreset,
+  PageNumberPosition,
+  ParagraphIndentation,
+} from "./document-format-options";
 
 export type WordDocumentOptions = {
   text: string;
@@ -17,13 +33,20 @@ export type WordDocumentOptions = {
   orderNumber?: string;
   font?: string;
   fontSize?: number;
-  spacing?: string;
+  spacing?: DocumentLineSpacing | string;
   coverPage?: boolean;
   references?: boolean;
   paragraphIndentation?: ParagraphIndentation;
   bodyAlignment?: BodyAlignment;
   boldHeadings?: boolean;
   cleanSpecialCharacters?: boolean;
+  pageNumberPosition?: PageNumberPosition;
+  headerText?: string;
+  footerText?: string;
+  headingPreset?: HeadingPreset;
+  automaticTableOfContents?: boolean;
+  apaFormatting?: boolean;
+  widowOrphanControl?: boolean;
 };
 
 type DocumentBlock =
@@ -37,8 +60,41 @@ type DocumentBlock =
 
 function lineSpacing(value?: string) {
   if (value === "single") return 240;
+  if (value === "1.15") return 276;
   if (value === "double") return 480;
   return 360;
+}
+
+type HeadingToken = {
+  size: number;
+  bold: boolean;
+  italics: boolean;
+  alignment: (typeof AlignmentType)[keyof typeof AlignmentType];
+  before: number;
+  after: number;
+};
+
+function headingTokens(preset: HeadingPreset, fontSize: number, boldHeadings: boolean) {
+  const normalSize = fontSize * 2;
+  if (preset === "apa7") {
+    return {
+      1: { size: normalSize, bold: true, italics: false, alignment: AlignmentType.CENTER, before: 240, after: 120 },
+      2: { size: normalSize, bold: true, italics: false, alignment: AlignmentType.LEFT, before: 240, after: 120 },
+      3: { size: normalSize, bold: true, italics: true, alignment: AlignmentType.LEFT, before: 200, after: 80 },
+    } satisfies Record<1 | 2 | 3, HeadingToken>;
+  }
+  if (preset === "compact") {
+    return {
+      1: { size: Math.max(normalSize + 4, 28), bold: boldHeadings, italics: false, alignment: AlignmentType.LEFT, before: 220, after: 80 },
+      2: { size: Math.max(normalSize + 2, 26), bold: boldHeadings, italics: false, alignment: AlignmentType.LEFT, before: 180, after: 70 },
+      3: { size: Math.max(normalSize, 24), bold: boldHeadings, italics: true, alignment: AlignmentType.LEFT, before: 160, after: 60 },
+    } satisfies Record<1 | 2 | 3, HeadingToken>;
+  }
+  return {
+    1: { size: Math.max(normalSize + 6, 30), bold: boldHeadings, italics: false, alignment: AlignmentType.LEFT, before: 280, after: 100 },
+    2: { size: Math.max(normalSize + 4, 28), bold: boldHeadings, italics: false, alignment: AlignmentType.LEFT, before: 240, after: 100 },
+    3: { size: Math.max(normalSize + 2, 26), bold: boldHeadings, italics: true, alignment: AlignmentType.LEFT, before: 220, after: 80 },
+  } satisfies Record<1 | 2 | 3, HeadingToken>;
 }
 
 function cleanText(value: string, cleanSpecialCharacters: boolean) {
@@ -58,6 +114,105 @@ function cleanText(value: string, cleanSpecialCharacters: boolean) {
     .replace(/â€”/g, "—")
     .replace(/Â/g, "")
     .trim();
+}
+
+const PAGE_CONTENT_WIDTH = 9026;
+const NO_TABLE_BORDERS = {
+  top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+  bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+  left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+  right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+  insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+  insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+};
+
+function pageNumberRun(font: string, apaFormatting: boolean) {
+  return new TextRun({
+    font,
+    size: 18,
+    children: apaFormatting ? [PageNumber.CURRENT] : ["Page ", PageNumber.CURRENT],
+  });
+}
+
+function furnitureCell(children: Paragraph[], width: number) {
+  return new TableCell({
+    width: { size: width, type: WidthType.DXA },
+    margins: { top: 0, right: 0, bottom: 0, left: 0 },
+    children,
+  });
+}
+
+function makeHeader(options: {
+  text: string;
+  font: string;
+  pageNumberPosition: PageNumberPosition;
+  apaFormatting: boolean;
+}) {
+  if (!options.text && options.pageNumberPosition !== "header-right") return undefined;
+  const leftWidth = Math.floor(PAGE_CONTENT_WIDTH * 0.72);
+  const rightWidth = PAGE_CONTENT_WIDTH - leftWidth;
+  return new Header({
+    children: [new Table({
+      width: { size: PAGE_CONTENT_WIDTH, type: WidthType.DXA },
+      columnWidths: [leftWidth, rightWidth],
+      layout: TableLayoutType.FIXED,
+      borders: NO_TABLE_BORDERS,
+      margins: { top: 0, right: 0, bottom: 0, left: 0 },
+      rows: [new TableRow({ children: [
+        furnitureCell([new Paragraph({
+          alignment: AlignmentType.LEFT,
+          spacing: { after: 0 },
+          children: options.text ? [new TextRun({ text: options.text, font: options.font, size: 18 })] : [],
+        })], leftWidth),
+        furnitureCell([new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          spacing: { after: 0 },
+          children: options.pageNumberPosition === "header-right"
+            ? [pageNumberRun(options.font, options.apaFormatting)]
+            : [],
+        })], rightWidth),
+      ] })],
+    })],
+  });
+}
+
+function makeFooter(options: {
+  text: string;
+  font: string;
+  pageNumberPosition: PageNumberPosition;
+  apaFormatting: boolean;
+}) {
+  if (!options.text && !options.pageNumberPosition.startsWith("footer-")) return undefined;
+  const leftWidth = 3610;
+  const centerWidth = 1806;
+  const rightWidth = PAGE_CONTENT_WIDTH - leftWidth - centerWidth;
+  const pageRun = pageNumberRun(options.font, options.apaFormatting);
+  return new Footer({
+    children: [new Table({
+      width: { size: PAGE_CONTENT_WIDTH, type: WidthType.DXA },
+      columnWidths: [leftWidth, centerWidth, rightWidth],
+      layout: TableLayoutType.FIXED,
+      borders: NO_TABLE_BORDERS,
+      margins: { top: 0, right: 0, bottom: 0, left: 0 },
+      rows: [new TableRow({ children: [
+        furnitureCell([new Paragraph({
+          alignment: AlignmentType.LEFT,
+          spacing: { after: 0 },
+          children: options.text ? [new TextRun({ text: options.text, font: options.font, size: 18 })] : [],
+        })], leftWidth),
+        furnitureCell([new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 0 },
+          children: options.pageNumberPosition === "footer-center" ? [pageRun] : [],
+        })], centerWidth),
+        furnitureCell([new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          spacing: { after: 0 },
+          children: options.pageNumberPosition === "footer-right" ? [pageRun] : [],
+        })], rightWidth),
+      ] })],
+    })],
+  });
 }
 
 function cleanPlainSegment(value: string, cleanSpecialCharacters: boolean) {
@@ -277,8 +432,9 @@ function makeBlockParagraph(options: {
   pageBreakBefore: boolean;
   paragraphIndentation: ParagraphIndentation;
   bodyAlignment: BodyAlignment;
-  boldHeadings: boolean;
   cleanSpecialCharacters: boolean;
+  headingStyles: Record<1 | 2 | 3, HeadingToken>;
+  widowOrphanControl: boolean;
 }) {
   const {
     block,
@@ -289,8 +445,9 @@ function makeBlockParagraph(options: {
     pageBreakBefore,
     paragraphIndentation,
     bodyAlignment,
-    boldHeadings,
     cleanSpecialCharacters,
+    headingStyles,
+    widowOrphanControl,
   } = options;
   const normalSize = fontSize * 2;
 
@@ -306,16 +463,19 @@ function makeBlockParagraph(options: {
   }
 
   if (block.kind === "heading") {
-    const size = block.level === 1 ? Math.max(normalSize + 6, 30) : block.level === 2 ? Math.max(normalSize + 4, 28) : Math.max(normalSize + 2, 26);
+    const level = block.level <= 1 ? 1 : block.level === 2 ? 2 : 3;
+    const token = headingStyles[level];
     return new Paragraph({
       pageBreakBefore,
       heading: headingLevel(block.level),
       keepNext: true,
       keepLines: true,
-      spacing: { before: block.level === 1 ? 280 : 220, after: 100, line: 240 },
-      children: inlineRuns(block.text, font, size, cleanSpecialCharacters, {
-        bold: boldHeadings,
-        italics: block.level === 3,
+      widowControl: widowOrphanControl,
+      alignment: token.alignment,
+      spacing: { before: token.before, after: token.after, line: 240 },
+      children: inlineRuns(block.text, font, token.size, cleanSpecialCharacters, {
+        bold: token.bold,
+        italics: token.italics,
         color: "000000",
       }),
     });
@@ -329,7 +489,7 @@ function makeBlockParagraph(options: {
       indent: { left: 540, right: 360 },
       spacing: { before: 80, after: 140, line: spacing },
       keepLines: true,
-      widowControl: true,
+      widowControl: widowOrphanControl,
       children: inlineRuns(block.text, font, normalSize, cleanSpecialCharacters, { italics: true }),
     });
   }
@@ -342,7 +502,7 @@ function makeBlockParagraph(options: {
       alignment: AlignmentType.LEFT,
       spacing: { after: 60, line: spacing },
       keepLines: true,
-      widowControl: true,
+      widowControl: widowOrphanControl,
       children: inlineRuns(block.text, font, normalSize, cleanSpecialCharacters),
     });
   }
@@ -355,7 +515,7 @@ function makeBlockParagraph(options: {
       alignment: AlignmentType.LEFT,
       spacing: { after: 60, line: spacing },
       keepLines: true,
-      widowControl: true,
+      widowControl: widowOrphanControl,
       children: [
         new TextRun({ text: block.checked ? "☒  " : "☐  ", font: "Arial", size: normalSize }),
         ...inlineRuns(block.text, font, normalSize, cleanSpecialCharacters),
@@ -371,7 +531,7 @@ function makeBlockParagraph(options: {
       alignment: AlignmentType.LEFT,
       spacing: { after: 80, line: spacing },
       keepLines: true,
-      widowControl: true,
+      widowControl: widowOrphanControl,
       children: inlineRuns(block.text, font, normalSize, cleanSpecialCharacters),
     });
   }
@@ -388,7 +548,7 @@ function makeBlockParagraph(options: {
       : paragraphIndentation === "none" || isLabeledParagraph(block.text)
         ? undefined
         : { firstLine: paragraphIndentation === "first-line-wide" ? 1440 : 720 },
-    widowControl: true,
+    widowControl: widowOrphanControl,
     children: inlineRuns(block.text, font, normalSize, cleanSpecialCharacters),
   });
 }
@@ -398,18 +558,33 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
   const text = cleanText(options.text, cleanSpecialCharacters);
   if (!text) throw new Error("No document text was supplied for Word conversion.");
 
-  const font = (options.font || "Times New Roman").trim() || "Times New Roman";
-  const fontSize = Math.min(30, Math.max(8, Number(options.fontSize || 12)));
-  const spacing = lineSpacing(options.spacing);
-  const paragraphIndentation = options.paragraphIndentation || "first-line";
-  const bodyAlignment = options.bodyAlignment || "justified";
-  const boldHeadings = options.boldHeadings !== false;
+  const apaFormatting = Boolean(options.apaFormatting);
+  const font = apaFormatting ? "Times New Roman" : ((options.font || "Times New Roman").trim() || "Times New Roman");
+  const fontSize = apaFormatting ? 12 : Math.min(30, Math.max(8, Number(options.fontSize || 12)));
+  const spacing = lineSpacing(apaFormatting ? "double" : options.spacing);
+  const paragraphIndentation = apaFormatting ? "first-line" : (options.paragraphIndentation || "first-line");
+  const bodyAlignment = apaFormatting ? "left" : (options.bodyAlignment || "justified");
+  const boldHeadings = apaFormatting || options.boldHeadings !== false;
+  const headingPreset = apaFormatting ? "apa7" : (options.headingPreset || "academic");
+  const pageNumberPosition = apaFormatting ? "header-right" : (options.pageNumberPosition || "footer-center");
+  const references = apaFormatting || Boolean(options.references);
+  const automaticTableOfContents = Boolean(options.automaticTableOfContents);
+  const widowOrphanControl = options.widowOrphanControl !== false;
+  const headerText = cleanText(options.headerText || "", cleanSpecialCharacters).slice(0, 160);
+  const footerText = cleanText(options.footerText || "", cleanSpecialCharacters).slice(0, 160);
+  const resolvedHeadingStyles = headingTokens(headingPreset, fontSize, boldHeadings);
   const blocks = parseDocumentBlocks(text, cleanSpecialCharacters);
+  const tocEntries = blocks
+    .filter((block): block is Extract<DocumentBlock, { kind: "heading" }> => block.kind === "heading")
+    .map(block => ({
+      title: block.text,
+      level: block.level <= 1 ? 1 : block.level === 2 ? 2 : 3,
+    }));
   const numberGroups = Array.from(new Set(
     blocks.filter((block): block is Extract<DocumentBlock, { kind: "number" }> => block.kind === "number").map(block => block.group),
   ));
 
-  const body: Paragraph[] = [];
+  const body: (Paragraph | TableOfContents)[] = [];
   let referenceMode = false;
 
   if (options.coverPage) {
@@ -438,27 +613,59 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
     }
   }
 
+  if (automaticTableOfContents && tocEntries.length > 0) {
+    body.push(new Paragraph({
+      style: "AcademicTocTitle",
+      pageBreakBefore: Boolean(options.coverPage),
+      alignment: AlignmentType.CENTER,
+      keepNext: true,
+      spacing: { before: 0, after: 220, line: 240 },
+      children: [new TextRun({ text: "Table of Contents", font, size: Math.max(fontSize * 2 + 6, 30), bold: true })],
+    }));
+    body.push(new TableOfContents("Table of Contents", {
+      hyperlink: true,
+      headingStyleRange: "1-3",
+      useAppliedParagraphOutlineLevel: true,
+      preserveNewLineInEntries: true,
+      cachedEntries: tocEntries,
+      beginDirty: true,
+    }));
+  }
+
   blocks.forEach((block, index) => {
-    if (block.kind === "heading" && isReferenceHeading(block.text)) referenceMode = true;
+    if (block.kind === "heading") referenceMode = isReferenceHeading(block.text);
+    const outputBlock: DocumentBlock = referenceMode && references && (
+      block.kind === "number" || block.kind === "bullet" || block.kind === "checklist"
+    )
+      ? { kind: "paragraph", text: block.text }
+      : block;
     body.push(makeBlockParagraph({
-      block,
+      block: outputBlock,
       font,
       fontSize,
       spacing,
-      referenceMode: Boolean(referenceMode && options.references && block.kind === "paragraph"),
-      pageBreakBefore: Boolean(options.coverPage && index === 0),
+      referenceMode: Boolean(referenceMode && references && outputBlock.kind === "paragraph"),
+      pageBreakBefore: Boolean((options.coverPage || (automaticTableOfContents && tocEntries.length > 0)) && index === 0),
       paragraphIndentation,
       bodyAlignment,
-      boldHeadings,
       cleanSpecialCharacters,
+      headingStyles: resolvedHeadingStyles,
+      widowOrphanControl,
     }));
   });
+
+  const header = makeHeader({ text: headerText, font, pageNumberPosition, apaFormatting });
+  const footer = makeFooter({ text: footerText, font, pageNumberPosition, apaFormatting });
+  const heading1 = resolvedHeadingStyles[1];
+  const heading2 = resolvedHeadingStyles[2];
+  const heading3 = resolvedHeadingStyles[3];
 
   const doc = new Document({
     creator: "Mabrig ICT & Academic Assistance",
     title: options.title || "Academic Document",
     description: options.orderNumber ? `Generated for ${options.orderNumber}` : "Generated academic document",
     compatibility: { doNotExpandShiftReturn: true },
+    features: { updateFields: true },
     styles: {
       default: {
         document: {
@@ -466,16 +673,16 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
           paragraph: { alignment: AlignmentType.JUSTIFIED, spacing: { line: spacing, after: 120 } },
         },
         heading1: {
-          run: { font, size: Math.max(fontSize * 2 + 6, 30), bold: boldHeadings, color: "000000" },
-          paragraph: { alignment: AlignmentType.LEFT, spacing: { before: 280, after: 100 }, keepNext: true },
+          run: { font, size: heading1.size, bold: heading1.bold, italics: heading1.italics, color: "000000" },
+          paragraph: { alignment: heading1.alignment, spacing: { before: heading1.before, after: heading1.after }, keepNext: true },
         },
         heading2: {
-          run: { font, size: Math.max(fontSize * 2 + 4, 28), bold: boldHeadings, color: "000000" },
-          paragraph: { alignment: AlignmentType.LEFT, spacing: { before: 240, after: 100 }, keepNext: true },
+          run: { font, size: heading2.size, bold: heading2.bold, italics: heading2.italics, color: "000000" },
+          paragraph: { alignment: heading2.alignment, spacing: { before: heading2.before, after: heading2.after }, keepNext: true },
         },
         heading3: {
-          run: { font, size: Math.max(fontSize * 2 + 2, 26), bold: boldHeadings, italics: true, color: "000000" },
-          paragraph: { alignment: AlignmentType.LEFT, spacing: { before: 220, after: 80 }, keepNext: true },
+          run: { font, size: heading3.size, bold: heading3.bold, italics: heading3.italics, color: "000000" },
+          paragraph: { alignment: heading3.alignment, spacing: { before: heading3.before, after: heading3.after }, keepNext: true },
         },
       },
       paragraphStyles: [
@@ -487,6 +694,15 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
           quickFormat: true,
           run: { font, size: Math.max(fontSize * 2 + 8, 32), bold: true, color: "000000" },
           paragraph: { alignment: AlignmentType.CENTER, spacing: { before: 120, after: 300, line: spacing }, keepNext: true },
+        },
+        {
+          id: "AcademicTocTitle",
+          name: "Academic TOC Title",
+          basedOn: "Normal",
+          next: "TOC1",
+          quickFormat: true,
+          run: { font, size: Math.max(fontSize * 2 + 6, 30), bold: true, color: "000000" },
+          paragraph: { alignment: AlignmentType.CENTER, spacing: { before: 0, after: 220 }, keepNext: true },
         },
         {
           id: "AcademicBody",
@@ -542,10 +758,13 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
       })),
     },
     sections: [{
+      headers: header ? { default: header } : undefined,
+      footers: footer ? { default: footer } : undefined,
       properties: {
         page: {
           size: { width: 11906, height: 16838, orientation: PageOrientation.PORTRAIT },
-          margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+          margin: { top: 1440, right: 1440, bottom: 1440, left: 1440, header: 720, footer: 720 },
+          pageNumbers: { start: 1 },
         },
       },
       children: body,
