@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Delivery, Order, OrderFile, Payment, Service, User } from "@/lib/models";
+import { formToggleEnabled, parseReferenceStyle } from "@/lib/document-format-options";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ type OrderRow = {
   userId?: unknown;
   serviceId?: unknown;
   referralCode?: string | null;
+  documentTitle?: string | null;
   instructions?: string;
   pastedContent?: string | null;
   conversionSource?: string | null;
@@ -63,15 +65,18 @@ type OrderRow = {
   footerText?: string | null;
   automaticTableOfContents?: boolean;
   apaFormatting?: boolean;
+  referenceStyle?: string;
+  removeEmptyParagraphs?: boolean;
   widowOrphanControl?: boolean;
+  adminNotifications?: { whatsapp?: string; telegram?: string };
   createdAt?: Date | string;
 };
 
-type UserRow = { name?: string; whatsapp?: string } | null;
-type ServiceRow = { name?: string } | null;
-type PaymentRow = { status?: string; amount?: number; reference?: string; paidAt?: Date | string } | null;
-type FileRow = { fileName?: string; storageKey?: string; mimeType?: string; sizeBytes?: number } | null;
-type DeliveryRow = { status?: string; location?: string; addressNote?: string } | null;
+type UserRow = { _id?: unknown; name?: string; whatsapp?: string } | null;
+type ServiceRow = { _id?: unknown; name?: string } | null;
+type PaymentRow = { orderId?: unknown; status?: string; amount?: number; reference?: string; paidAt?: Date | string } | null;
+type FileRow = { orderId?: unknown; fileName?: string; storageKey?: string; mimeType?: string; sizeBytes?: number } | null;
+type DeliveryRow = { orderId?: unknown; status?: string; location?: string; addressNote?: string } | null;
 
 function formatMoney(value?: number | null) {
   return `₦${Number(value || 0).toLocaleString()}`;
@@ -95,18 +100,37 @@ async function updateOrder(formData: FormData) {
   const orderNumber = String(formData.get("orderNumber") || "").trim();
   const status = String(formData.get("status") || "").trim();
   const adminNote = String(formData.get("adminNote") || "").trim().slice(0, 3000);
+  const referenceStyle = parseReferenceStyle(formData.get("referenceStyle"));
+  const removeEmptyParagraphs = formToggleEnabled(formData, "removeEmptyParagraphs");
 
   if (!orderNumber || !ALL_STATUSES.has(status)) return;
 
   await Order.updateOne(
     { orderNumber },
-    { $set: { status, adminNote: adminNote || null } },
+    { $set: {
+      status,
+      adminNote: adminNote || null,
+      referenceStyle,
+      apaFormatting: referenceStyle === "apa7",
+      references: referenceStyle !== "none",
+      removeEmptyParagraphs,
+    } },
   );
   revalidatePath("/admin");
 }
 
-export default async function AdminPage() {
+type AdminPageProps = {
+  searchParams: Promise<{ q?: string; status?: string }>;
+};
+
+export default async function AdminPage({ searchParams }: AdminPageProps) {
   await connectMongoDB();
+  const params = await searchParams;
+  const search = String(params.q || "").trim().toLowerCase();
+  const requestedStatus = String(params.status || "").trim().toUpperCase();
+  const statusFilter = ALL_STATUSES.has(requestedStatus) ? requestedStatus : "";
+  const whatsappNotificationsReady = Boolean(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID);
+  const telegramNotificationsReady = Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_ADMIN_CHAT_ID);
 
   const [total, students, rawOrders] = await Promise.all([
     Order.countDocuments(),
@@ -116,25 +140,43 @@ export default async function AdminPage() {
 
   const orders = rawOrders as unknown as OrderRow[];
   const counts = await Promise.all(WORKFLOW_STATUSES.map(status => Order.countDocuments({ status })));
+  const countByStatus = new Map(WORKFLOW_STATUSES.map((status, index) => [status, counts[index]]));
 
-  const enriched = await Promise.all(orders.map(async order => {
-    const [userResult, serviceResult, paymentResult, fileResult, deliveryResult] = await Promise.all([
-      User.findById(order.userId).lean().exec(),
-      Service.findById(order.serviceId).lean().exec(),
-      Payment.findOne({ orderId: order._id }).lean().exec(),
-      OrderFile.findOne({ orderId: order._id }).lean().exec(),
-      Delivery.findOne({ orderId: order._id }).lean().exec(),
-    ]);
+  const orderIds = orders.map(order => order._id);
+  const [userResults, serviceResults, paymentResults, fileResults, deliveryResults] = await Promise.all([
+    User.find({ _id: { $in: orders.map(order => order.userId).filter(Boolean) } }).lean().exec(),
+    Service.find({ _id: { $in: orders.map(order => order.serviceId).filter(Boolean) } }).lean().exec(),
+    Payment.find({ orderId: { $in: orderIds } }).lean().exec(),
+    OrderFile.find({ orderId: { $in: orderIds } }).lean().exec(),
+    Delivery.find({ orderId: { $in: orderIds } }).lean().exec(),
+  ]);
+  const usersById = new Map((userResults as unknown as Exclude<UserRow, null>[]).map(item => [String(item._id), item]));
+  const servicesById = new Map((serviceResults as unknown as Exclude<ServiceRow, null>[]).map(item => [String(item._id), item]));
+  const paymentsByOrder = new Map((paymentResults as unknown as Exclude<PaymentRow, null>[]).map(item => [String(item.orderId), item]));
+  const filesByOrder = new Map((fileResults as unknown as Exclude<FileRow, null>[]).map(item => [String(item.orderId), item]));
+  const deliveriesByOrder = new Map((deliveryResults as unknown as Exclude<DeliveryRow, null>[]).map(item => [String(item.orderId), item]));
 
-    return {
-      ...order,
-      user: userResult as UserRow,
-      service: serviceResult as ServiceRow,
-      payment: paymentResult as PaymentRow,
-      file: fileResult as FileRow,
-      delivery: deliveryResult as DeliveryRow,
-    };
+  const enriched = orders.map(order => ({
+    ...order,
+    user: usersById.get(String(order.userId)) || null,
+    service: servicesById.get(String(order.serviceId)) || null,
+    payment: paymentsByOrder.get(String(order._id)) || null,
+    file: filesByOrder.get(String(order._id)) || null,
+    delivery: deliveriesByOrder.get(String(order._id)) || null,
   }));
+
+  const visibleOrders = enriched.filter(order => {
+    if (statusFilter && order.status !== statusFilter) return false;
+    if (!search) return true;
+    return [
+      order.orderNumber,
+      order.documentTitle,
+      order.user?.name,
+      order.user?.whatsapp,
+      order.service?.name,
+      order.file?.fileName,
+    ].some(value => String(value || "").toLowerCase().includes(search));
+  });
 
   return (
     <main className="admin-shell">
@@ -152,29 +194,76 @@ export default async function AdminPage() {
       </header>
 
       <section className="admin-metrics">
-        <article className="metric-card power-metric"><span>DOCUMENT SUPERPOWER</span><strong>TEXT → WORD</strong><small>Format and convert from the dashboard</small></article>
         <article className="metric-card"><span>Total Orders</span><strong>{total}</strong></article>
         <article className="metric-card"><span>Students</span><strong>{students}</strong></article>
-        {WORKFLOW_STATUSES.map((status, index) => (
-          <article className="metric-card" key={status}>
-            <span>{label(status)}</span><strong>{counts[index]}</strong>
-          </article>
-        ))}
+        <article className="metric-card metric-attention"><span>New</span><strong>{countByStatus.get("NEW") || 0}</strong><small>Needs first review</small></article>
+        <article className="metric-card"><span>Ready to print</span><strong>{countByStatus.get("READY_TO_PRINT") || 0}</strong></article>
+        <article className="metric-card metric-success"><span>Ready</span><strong>{countByStatus.get("READY") || 0}</strong><small>Awaiting collection</small></article>
       </section>
 
-      <section className="admin-orders">
-        <div className="admin-section-title">
-          <div><h2>Latest Orders</h2><p>Showing up to 100 most recent orders.</p></div>
-        </div>
+      <section className="admin-workspace">
+        <aside className="admin-sidebar">
+          <div className="admin-sidebar-card">
+            <span className="sidebar-eyebrow">FIND AN ORDER</span>
+            <form method="get" className="admin-filter-form">
+              <label>
+                <span>Search</span>
+                <input name="q" defaultValue={params.q || ""} placeholder="Order, student, phone or file" />
+              </label>
+              <label>
+                <span>Status</span>
+                <select name="status" defaultValue={statusFilter}>
+                  <option value="">All statuses</option>
+                  {Array.from(ALL_STATUSES).map(status => <option value={status} key={status}>{label(status)}</option>)}
+                </select>
+              </label>
+              <button className="btn primary" type="submit">Filter orders</button>
+              {(search || statusFilter) && <a className="admin-clear-filter" href="/admin">Clear filters</a>}
+            </form>
+          </div>
 
-        {enriched.length === 0 && <div className="card"><p>No orders yet.</p></div>}
+          <div className="admin-sidebar-card admin-tools-card">
+            <span className="sidebar-eyebrow">DOCUMENT TOOLS</span>
+            <h3>Clean and reference</h3>
+            <p>Each order now has controls for removing empty spaces and applying APA 7 or MLA 9 reference layout before Word download.</p>
+            <ul>
+              <li><strong>APA 7:</strong> References, double spacing and hanging indents.</li>
+              <li><strong>MLA 9:</strong> Works Cited, surname/page header and hanging indents.</li>
+              <li><strong>Cleanup:</strong> removes blank paragraphs while preserving real text.</li>
+            </ul>
+            <div className="admin-channel-status">
+              <span className={whatsappNotificationsReady ? "ready" : "missing"}>WhatsApp {whatsappNotificationsReady ? "ready" : "needs credentials"}</span>
+              <span className={telegramNotificationsReady ? "ready" : "missing"}>Telegram {telegramNotificationsReady ? "ready" : "needs chat ID"}</span>
+            </div>
+            <a className="btn conversion-btn" href="/admin/converter">Open Conversion Studio</a>
+          </div>
 
-        {enriched.map(order => {
+          <div className="admin-sidebar-card admin-status-list">
+            <span className="sidebar-eyebrow">WORK QUEUE</span>
+            {WORKFLOW_STATUSES.map(status => (
+              <a href={`/admin?status=${status}`} key={status} className={statusFilter === status ? "active" : ""} aria-current={statusFilter === status ? "page" : undefined}>
+                <span>{label(status)}</span><strong>{countByStatus.get(status) || 0}</strong>
+              </a>
+            ))}
+          </div>
+        </aside>
+
+        <div className="admin-orders">
+          <div className="admin-section-title">
+            <div><h2>{search || statusFilter ? "Filtered Orders" : "Latest Orders"}</h2><p>Showing {visibleOrders.length} of the 100 most recent orders.</p></div>
+          </div>
+
+        {visibleOrders.length === 0 && <div className="card"><p>No orders match this search or status.</p></div>}
+
+        {visibleOrders.map(order => {
           const wa = whatsappLink(order.user?.whatsapp);
           const content = order.pastedContent?.trim() || "";
           const currentStatus = order.status || "NEW";
           const selectableStatus = ALL_STATUSES.has(currentStatus) ? currentStatus : "NEW";
           const conversionReady = Boolean(content && order.orderNumber);
+          const hasSubmittedFile = Boolean(order.file && order.orderNumber);
+          const originalDownloadReady = Boolean(hasSubmittedFile && order.file?.storageKey?.startsWith("mongodb/"));
+          const referenceStyle = parseReferenceStyle(order.referenceStyle || (order.apaFormatting ? "apa7" : "none"));
 
           return (
             <article className="admin-order-card" key={String(order._id)}>
@@ -182,7 +271,7 @@ export default async function AdminPage() {
                 <div>
                   <span className="order-number">{order.orderNumber || "Unknown order"}</span>
                   <h3>{order.user?.name || "Unknown student"}</h3>
-                  <p>{order.service?.name || "Academic Document Printing"}</p>
+                  <p>{order.documentTitle || order.service?.name || "Academic Document Printing"}</p>
                 </div>
                 <div className="order-head-right">
                   <span className={`status-pill status-${currentStatus.toLowerCase()}`}>{label(currentStatus)}</span>
@@ -201,12 +290,13 @@ export default async function AdminPage() {
                 <div><span>Text treatment</span><strong>{label(order.transformationMode || "FORMAT")}</strong></div>
                 <div><span>Paragraph layout</span><strong>{label(order.bodyAlignment || "JUSTIFIED")} • {label(order.paragraphIndentation || "FIRST-LINE")}</strong></div>
                 <div><span>Heading / pages</span><strong>{label(order.headingPreset || "ACADEMIC")} • {label(order.pageNumberPosition || "FOOTER-CENTER")}</strong></div>
-                <div><span>Advanced Word options</span><strong>{[order.automaticTableOfContents && "Contents page", order.apaFormatting && "APA 7", order.widowOrphanControl !== false && "Widow/orphan control"].filter(Boolean).join(" • ") || "None selected"}</strong></div>
+                <div><span>Advanced Word options</span><strong>{[order.automaticTableOfContents && "Contents page", referenceStyle !== "none" && label(referenceStyle), order.widowOrphanControl !== false && "Widow/orphan control"].filter(Boolean).join(" • ") || "None selected"}</strong></div>
                 <div><span>Header / footer</span><strong>{[order.headerText && `Header: ${order.headerText}`, order.footerText && `Footer: ${order.footerText}`].filter(Boolean).join(" • ") || "No custom text"}</strong></div>
-                <div><span>Cleanup</span><strong>{[order.boldHeadings !== false && "Bold headings", order.cleanSpecialCharacters !== false && "Special-character cleanup"].filter(Boolean).join(" • ") || "Disabled"}</strong></div>
+                <div><span>Cleanup</span><strong>{[order.boldHeadings !== false && "Bold headings", order.cleanSpecialCharacters !== false && "Special-character cleanup", order.removeEmptyParagraphs !== false && "Empty-space cleanup"].filter(Boolean).join(" • ") || "Disabled"}</strong></div>
                 <div><span>Conversion source</span><strong>{order.conversionSource ? label(order.conversionSource) : content ? "PASTE / LEGACY TEXT" : "NOT READY"}</strong></div>
                 <div><span>Payment</span><strong>{order.payment?.status || "NO PAYMENT RECORD"}</strong>{order.payment?.reference && <small>{order.payment.reference}</small>}</div>
                 <div><span>Delivery</span><strong>{order.delivery ? `${order.delivery.location || "Campus"} • ${order.delivery.status || "PENDING"}` : "No delivery"}</strong>{order.delivery?.addressNote && <small>{order.delivery.addressNote}</small>}</div>
+                <div><span>Admin notifications</span><strong>WhatsApp: {label(order.adminNotifications?.whatsapp || "not_configured")} • Telegram: {label(order.adminNotifications?.telegram || "not_configured")}</strong></div>
                 <div><span>Submitted</span><strong>{order.createdAt ? new Date(order.createdAt).toLocaleString("en-NG") : "—"}</strong></div>
               </div>
 
@@ -222,6 +312,8 @@ export default async function AdminPage() {
                   {order.conversionWarning && <small className="conversion-warning">{order.conversionWarning}</small>}
                 </div>
                 <div className="conversion-panel-actions">
+                  {originalDownloadReady && <a className="btn secondary" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/file`}>Download Original</a>}
+                  {hasSubmittedFile && !originalDownloadReady && <span className="btn admin-file-disabled" title="Older submissions did not retain the original file bytes.">Original unavailable — legacy order</span>}
                   {conversionReady && <a className="btn conversion-btn" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/word`}>Generate Formatted Word (.docx)</a>}
                   <a className="btn secondary" href="/admin/converter">Open Conversion Studio</a>
                 </div>
@@ -238,7 +330,9 @@ export default async function AdminPage() {
                   {order.file ? <>
                     <p><strong>{order.file.fileName || "Uploaded file"}</strong></p>
                     <small>{order.file.mimeType || "Unknown type"} • {order.file.sizeBytes ? `${Math.ceil(order.file.sizeBytes / 1024)} KB` : "size unknown"}</small>
-                    <p className="admin-storage-note">Storage key: {order.file.storageKey || "Not stored"}</p>
+                    {originalDownloadReady
+                      ? <a className="btn admin-file-download" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/file`}>Download submitted file</a>
+                      : <p className="admin-file-unavailable">Legacy metadata only — original file was not retained.</p>}
                   </> : <p>No file uploaded.</p>}
                 </div>
               </div>
@@ -258,6 +352,19 @@ export default async function AdminPage() {
                     {Array.from(ALL_STATUSES).map(status => <option value={status} key={status}>{label(status)}</option>)}
                   </select>
                 </label>
+                <label>
+                  <span>Referencing style</span>
+                  <select name="referenceStyle" defaultValue={referenceStyle}>
+                    <option value="none">No prescribed style</option>
+                    <option value="apa7">APA 7 — References</option>
+                    <option value="mla9">MLA 9 — Works Cited</option>
+                  </select>
+                </label>
+                <label className="admin-cleanup-toggle">
+                  <input type="hidden" name="removeEmptyParagraphs" value="off" />
+                  <input type="checkbox" name="removeEmptyParagraphs" value="on" defaultChecked={order.removeEmptyParagraphs !== false} />
+                  <span>Remove empty spaces / blank paragraphs</span>
+                </label>
                 <label className="admin-note-field">
                   <span>Printer / admin note</span>
                   <textarea name="adminNote" defaultValue={order.adminNote || ""} placeholder="Formatting issues, collection note, print instructions, follow-up..." />
@@ -267,6 +374,7 @@ export default async function AdminPage() {
             </article>
           );
         })}
+        </div>
       </section>
     </main>
   );

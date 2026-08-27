@@ -56,7 +56,13 @@ const orderSchema = new Schema({
   footerText: { type: String, default: null },
   automaticTableOfContents: { type: Boolean, default: false },
   apaFormatting: { type: Boolean, default: false },
+  referenceStyle: { type: String, enum: ["none", "apa7", "mla9"], default: "none" },
+  removeEmptyParagraphs: { type: Boolean, default: true },
   widowOrphanControl: { type: Boolean, default: true },
+  adminNotifications: {
+    whatsapp: { type: String, enum: ["pending", "sent", "failed", "not_configured"], default: "not_configured" },
+    telegram: { type: String, enum: ["pending", "sent", "failed", "not_configured"], default: "not_configured" },
+  },
 }, { timestamps: true });
 
 const orderFileSchema = new Schema({
@@ -65,6 +71,7 @@ const orderFileSchema = new Schema({
   storageKey: String,
   mimeType: String,
   sizeBytes: Number,
+  data: { type: Buffer, select: false },
 }, { timestamps: true });
 
 const paymentSchema = new Schema({

@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Delivery, Order, OrderFile, Service, User } from "@/lib/models";
 import { calculateQuote } from "@/lib/pricing";
 import { extractDocumentText } from "@/lib/extract-document-text";
 import { parseDocumentTransformationMode } from "@/lib/ai-document-transform";
+import { notifyAdminOfOrder } from "@/lib/order-notifications";
 import {
   formToggleEnabled,
   parseBodyAlignment,
@@ -11,9 +12,11 @@ import {
   parseHeadingPreset,
   parsePageNumberPosition,
   parseParagraphIndentation,
+  parseReferenceStyle,
 } from "@/lib/document-format-options";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const MAX_PAGES = 20;
 const MAX_PASTED_CHARS = 100_000;
@@ -81,6 +84,8 @@ export async function POST(request: Request) {
     const footerText = String(form.get("footerText") || "").trim().slice(0, 160) || null;
     const automaticTableOfContents = formToggleEnabled(form, "automaticTableOfContents", false);
     const apaFormatting = formToggleEnabled(form, "apaFormatting", false);
+    const referenceStyle = parseReferenceStyle(form.get("referenceStyle") || (apaFormatting ? "apa7" : "none"));
+    const removeEmptyParagraphs = formToggleEnabled(form, "removeEmptyParagraphs");
     const widowOrphanControl = formToggleEnabled(form, "widowOrphanControl");
     const file = form.get("file");
     const hasFile = file instanceof File && file.size > 0;
@@ -160,11 +165,47 @@ export async function POST(request: Request) {
       footerText,
       automaticTableOfContents,
       apaFormatting,
+      referenceStyle,
+      removeEmptyParagraphs,
       widowOrphanControl,
+      adminNotifications: {
+        whatsapp: process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID ? "pending" : "not_configured",
+        telegram: process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_ADMIN_CHAT_ID ? "pending" : "not_configured",
+      },
     });
 
-    if (hasFile) await OrderFile.create({ orderId: order._id, fileName: file.name, storageKey: `pending/${orderNumber}/${file.name}`, mimeType: file.type || null, sizeBytes: file.size });
+    let submittedFile: { data: Buffer; fileName: string; mimeType: string } | null = null;
+    if (hasFile) {
+      submittedFile = {
+        data: Buffer.from(await file.arrayBuffer()),
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+      };
+      await OrderFile.create({
+        orderId: order._id,
+        fileName: submittedFile.fileName,
+        storageKey: `mongodb/${orderNumber}/${submittedFile.fileName}`,
+        mimeType: submittedFile.mimeType,
+        sizeBytes: submittedFile.data.length,
+        data: submittedFile.data,
+      });
+    }
     if (printOption === "DIGITAL_PRINT_DELIVERY") await Delivery.create({ orderId: order._id, location: deliveryLocation, addressNote: deliveryNote || null });
+
+    after(async () => {
+      try {
+        const adminNotifications = await notifyAdminOfOrder({
+          orderNumber,
+          studentName: name,
+          studentWhatsapp: whatsapp,
+          documentTitle,
+          submittedFile,
+        });
+        await Order.updateOne({ _id: order._id }, { $set: { adminNotifications } });
+      } catch (error) {
+        console.error("Unable to record admin notification status", error);
+      }
+    });
 
     return NextResponse.json({
       ok: true,

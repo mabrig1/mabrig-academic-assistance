@@ -11,6 +11,7 @@ import {
   parseHeadingPreset,
   parsePageNumberPosition,
   parseParagraphIndentation,
+  parseReferenceStyle,
 } from "@/lib/document-format-options";
 import { buildAcademicWordDocument } from "@/lib/word-document";
 
@@ -44,6 +45,8 @@ export async function POST(request: Request) {
     const footerText = String(form.get("footerText") || "").trim().slice(0, 160);
     const automaticTableOfContents = formToggleEnabled(form, "automaticTableOfContents", false);
     const apaFormatting = formToggleEnabled(form, "apaFormatting", false);
+    const referenceStyle = parseReferenceStyle(form.get("referenceStyle") || (apaFormatting ? "apa7" : "none"));
+    const removeEmptyParagraphs = formToggleEnabled(form, "removeEmptyParagraphs");
     const widowOrphanControl = formToggleEnabled(form, "widowOrphanControl");
 
     if (!text) return NextResponse.json({ error: "Paste text before converting to Word." }, { status: 400 });
@@ -69,6 +72,8 @@ export async function POST(request: Request) {
       footerText,
       automaticTableOfContents,
       apaFormatting,
+      referenceStyle,
+      removeEmptyParagraphs,
       widowOrphanControl,
     });
 

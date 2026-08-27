@@ -5,11 +5,13 @@ Open-source MVP for Mabrig ICT & Academic Assistance: student ordering, academic
 ## MVP
 
 - Student-facing Next.js storefront
-- Order request form with file attachment
+- Order request form with protected, downloadable file retention (uploads up to 4MB)
 - Order IDs
 - Service catalogue
 - Responsive mobile/desktop UI
-- Integration-ready environment variables for Paystack, WhatsApp, Telegram, AI and object storage
+- Admin order search, status filtering, original-file download and formatted Word generation
+- APA 7 / MLA 9 reference layouts and empty-paragraph cleanup
+- WhatsApp and Telegram admin notifications with the submitted document attached
 
 ## Roadmap
 
@@ -35,6 +37,8 @@ npm run dev
 Open http://localhost:3000.
 
 Copy `.env.example` to `.env.local` when integrations are added. Never commit real API keys.
+
+For submission alerts, set the WhatsApp Cloud API variables and `ADMIN_WHATSAPP_NUMBER=2347065342818`. For Telegram, message your bot once, obtain the numeric chat ID, and set `TELEGRAM_BOT_TOKEN` plus `TELEGRAM_ADMIN_CHAT_ID`. The notification code never blocks order creation when a provider is unavailable.
 
 ## Academic integrity
 

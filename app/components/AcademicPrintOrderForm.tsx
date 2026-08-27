@@ -123,6 +123,13 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
             <option value="compact">Compact report hierarchy</option>
           </select>
         </label>
+        <label className="field"><span>Referencing style</span>
+          <select name="referenceStyle" defaultValue="none">
+            <option value="none">No prescribed style</option>
+            <option value="apa7">APA 7 — References</option>
+            <option value="mla9">MLA 9 — Works Cited</option>
+          </select>
+        </label>
         <label className="field"><span>Page numbers</span>
           <select name="pageNumberPosition" defaultValue="footer-center">
             <option value="footer-center">Footer — centred</option>
@@ -164,11 +171,12 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
           <input type="hidden" name="cleanSpecialCharacters" value="off" />
           <input type="hidden" name="automaticTableOfContents" value="off" />
           <input type="hidden" name="apaFormatting" value="off" />
+          <input type="hidden" name="removeEmptyParagraphs" value="off" />
           <input type="hidden" name="widowOrphanControl" value="off" />
           <label><input name="boldHeadings" value="on" type="checkbox" defaultChecked /> Bold headings</label>
           <label><input name="cleanSpecialCharacters" value="on" type="checkbox" defaultChecked /> Remove stray special / Markdown characters</label>
+          <label><input name="removeEmptyParagraphs" value="on" type="checkbox" defaultChecked /> Remove empty spaces / blank paragraphs</label>
           <label><input name="automaticTableOfContents" value="on" type="checkbox" /> Automatic contents page</label>
-          <label><input name="apaFormatting" value="on" type="checkbox" /> APA 7 paper formatting</label>
           <label><input name="widowOrphanControl" value="on" type="checkbox" defaultChecked /> Prevent widow / orphan lines</label>
           <label><input name="citations" type="checkbox" /> Citations</label>
           <label><input name="references" type="checkbox" /> References / hanging indent</label>
@@ -180,7 +188,7 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         <input type="hidden" name="referralCode" value={referralCode} />
       </div>
 
-      <div className="notice" style={{marginTop:16}}><strong>Word superpower:</strong> Times New Roman, 12pt and 1.5 spacing are selected by default. APA 7 automatically applies double spacing, left alignment, 0.5-inch paragraph indents, APA headings, hanging references and page numbers at the top right. The contents page uses real Heading 1–3 styles.</div>
+      <div className="notice" style={{marginTop:16}}><strong>Word superpower:</strong> Times New Roman, 12pt and 1.5 spacing are selected by default. APA 7 and MLA 9 apply double spacing, 0.5-inch paragraph indents, hanging references and top-right page numbers. The service formats the sources supplied; it does not invent missing citations.</div>
       <div className="notice" style={{marginTop:10}}>Academic integrity: this service supports editing, formatting, proofreading and document production. Students remain responsible for assessed submissions.</div>
       <button className="btn primary" style={{marginTop:16}} type="submit" disabled={submitting}>{submitting ? "Preparing conversion..." : "Submit, Format & Convert to Word"}</button>
       {message && <p className="form-message" aria-live="polite">{message}</p>}

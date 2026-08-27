@@ -13,6 +13,7 @@ import {
   parseHeadingPreset,
   parsePageNumberPosition,
   parseParagraphIndentation,
+  parseReferenceStyle,
 } from "@/lib/document-format-options";
 
 export const runtime = "nodejs";
@@ -43,6 +44,8 @@ type OrderDoc = {
   footerText?: string | null;
   automaticTableOfContents?: boolean;
   apaFormatting?: boolean;
+  referenceStyle?: string;
+  removeEmptyParagraphs?: boolean;
   widowOrphanControl?: boolean;
 };
 
@@ -100,6 +103,8 @@ export async function GET(_request: Request, context: RouteContext) {
       footerText: order.footerText || "",
       automaticTableOfContents: Boolean(order.automaticTableOfContents),
       apaFormatting: Boolean(order.apaFormatting),
+      referenceStyle: parseReferenceStyle(order.referenceStyle || (order.apaFormatting ? "apa7" : "none")),
+      removeEmptyParagraphs: order.removeEmptyParagraphs !== false,
       widowOrphanControl: order.widowOrphanControl !== false,
     });
 
