@@ -1,6 +1,13 @@
 export const dynamic = "force-dynamic";
 
 export default function AdminConverterPage() {
+  const aiConfigured = Boolean(
+    process.env.AI_API_KEY?.trim() &&
+    process.env.AI_BASE_URL?.trim() &&
+    process.env.AI_MODEL?.trim(),
+  );
+  const aiModel = process.env.AI_MODEL?.trim();
+
   return (
     <main className="admin-shell">
       <header className="admin-topbar">
@@ -52,7 +59,34 @@ export default function AdminConverterPage() {
                   <option value="double">Double</option>
                 </select>
               </label>
+              <label className="field">
+                <span>Text treatment</span>
+                <select name="transformationMode" defaultValue="proofread">
+                  <option value="proofread">Proofread &amp; improve clarity (AI)</option>
+                  <option value="rewrite">Rewrite for clarity and originality (AI)</option>
+                  <option value="format">Format only — keep the wording</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>Body alignment</span>
+                <select name="bodyAlignment" defaultValue="justified">
+                  <option value="justified">Justified (academic)</option>
+                  <option value="left">Left aligned</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>Paragraph indentation</span>
+                <select name="paragraphIndentation" defaultValue="first-line">
+                  <option value="first-line">First line — 0.5 inch</option>
+                  <option value="first-line-wide">First line — 1 inch</option>
+                  <option value="none">No first-line indentation</option>
+                </select>
+              </label>
               <div className="field check-row">
+                <input type="hidden" name="boldHeadings" value="off" />
+                <input type="hidden" name="cleanSpecialCharacters" value="off" />
+                <label><input type="checkbox" name="boldHeadings" value="on" defaultChecked /> Bold headings</label>
+                <label><input type="checkbox" name="cleanSpecialCharacters" value="on" defaultChecked /> Remove stray special / Markdown characters</label>
                 <label><input type="checkbox" name="coverPage" /> Add cover page</label>
                 <label><input type="checkbox" name="references" /> Format references with hanging indent</label>
               </div>
@@ -63,7 +97,10 @@ export default function AdminConverterPage() {
             </div>
 
             <div className="notice" style={{ marginTop: 16 }}>
-              <strong>Smart academic formatting:</strong> the converter applies 1-inch margins, justified body text, heading recognition, your selected font/spacing, optional cover page and optional reference hanging indents.
+              <strong>Smart academic conversion:</strong> AI modes genuinely improve or rewrite the wording before Word generation. Format-only mode preserves the wording but converts Markdown headings, emphasis, lists and quotations into real Word formatting.
+            </div>
+            <div className="notice" style={{ marginTop: 10 }}>
+              <strong>AI connection:</strong> {aiConfigured ? `Configured${aiModel ? ` with ${aiModel}` : ""}.` : "Not fully configured. Add AI_API_KEY, AI_BASE_URL and AI_MODEL in Vercel, then redeploy."}
             </div>
             <button className="btn primary conversion-download-btn" type="submit">⚡ Generate Formatted Word (.docx)</button>
           </form>

@@ -96,6 +96,26 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         </label>
 
         <label className="field"><span>Font size</span><input name="fontSize" type="number" min="8" max="30" defaultValue="12" /></label>
+        <label className="field"><span>Text treatment</span>
+          <select name="transformationMode" defaultValue="proofread">
+            <option value="proofread">Proofread &amp; improve clarity (AI)</option>
+            <option value="rewrite">Rewrite for clarity and originality (AI)</option>
+            <option value="format">Format only — keep the wording</option>
+          </select>
+        </label>
+        <label className="field"><span>Body alignment</span>
+          <select name="bodyAlignment" defaultValue="justified">
+            <option value="justified">Justified (academic)</option>
+            <option value="left">Left aligned</option>
+          </select>
+        </label>
+        <label className="field"><span>Paragraph indentation</span>
+          <select name="paragraphIndentation" defaultValue="first-line">
+            <option value="first-line">First line — 0.5 inch</option>
+            <option value="first-line-wide">First line — 1 inch</option>
+            <option value="none">No first-line indentation</option>
+          </select>
+        </label>
         <label className="field"><span>Production</span>
           <select name="printOption" value={printOption} onChange={e => setPrintOption(e.target.value)}>
             <option value="DIGITAL_ONLY">Word conversion / digital processing only</option>
@@ -123,6 +143,10 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         <label className="field full"><span>Option 2 — Paste your work here for instant Word conversion</span><textarea name="pastedContent" rows={12} maxLength={100000} placeholder="Paste the text of your assignment, term paper, project or other document here. The print shop can generate a formatted Word document from this text." /></label>
 
         <div className="field full check-row">
+          <input type="hidden" name="boldHeadings" value="off" />
+          <input type="hidden" name="cleanSpecialCharacters" value="off" />
+          <label><input name="boldHeadings" value="on" type="checkbox" defaultChecked /> Bold headings</label>
+          <label><input name="cleanSpecialCharacters" value="on" type="checkbox" defaultChecked /> Remove stray special / Markdown characters</label>
           <label><input name="citations" type="checkbox" /> Citations</label>
           <label><input name="references" type="checkbox" /> References / hanging indent</label>
           <label><input name="coverPage" type="checkbox" /> Cover page</label>
@@ -133,7 +157,7 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         <input type="hidden" name="referralCode" value={referralCode} />
       </div>
 
-      <div className="notice" style={{marginTop:16}}><strong>Word superpower:</strong> Times New Roman, 12pt and 1.5 spacing are selected by default. Pasted text and supported uploads can be turned into a clean .docx file for final printer review.</div>
+      <div className="notice" style={{marginTop:16}}><strong>Word superpower:</strong> Times New Roman, 12pt and 1.5 spacing are selected by default. Choose an AI mode to genuinely improve the wording, or Format only to keep every sentence while converting headings, emphasis and lists into clean Word formatting.</div>
       <div className="notice" style={{marginTop:10}}>Academic integrity: this service supports editing, formatting, proofreading and document production. Students remain responsible for assessed submissions.</div>
       <button className="btn primary" style={{marginTop:16}} type="submit" disabled={submitting}>{submitting ? "Preparing conversion..." : "Submit, Format & Convert to Word"}</button>
       {message && <p className="form-message" aria-live="polite">{message}</p>}

@@ -3,6 +3,12 @@ import { connectMongoDB } from "@/lib/mongodb";
 import { Delivery, Order, OrderFile, Service, User } from "@/lib/models";
 import { calculateQuote } from "@/lib/pricing";
 import { extractDocumentText } from "@/lib/extract-document-text";
+import { parseDocumentTransformationMode } from "@/lib/ai-document-transform";
+import {
+  formToggleEnabled,
+  parseBodyAlignment,
+  parseParagraphIndentation,
+} from "@/lib/document-format-options";
 
 export const runtime = "nodejs";
 
@@ -61,6 +67,11 @@ export async function POST(request: Request) {
     const references = form.get("references") === "on";
     const coverPage = form.get("coverPage") === "on";
     const conversionRequested = form.get("conversionRequested") === "on";
+    const transformationMode = parseDocumentTransformationMode(form.get("transformationMode"));
+    const bodyAlignment = parseBodyAlignment(form.get("bodyAlignment"));
+    const paragraphIndentation = parseParagraphIndentation(form.get("paragraphIndentation"));
+    const boldHeadings = formToggleEnabled(form, "boldHeadings");
+    const cleanSpecialCharacters = formToggleEnabled(form, "cleanSpecialCharacters");
     const file = form.get("file");
     const hasFile = file instanceof File && file.size > 0;
 
@@ -128,6 +139,11 @@ export async function POST(request: Request) {
       references,
       coverPage,
       conversionRequested,
+      transformationMode,
+      bodyAlignment,
+      paragraphIndentation,
+      boldHeadings,
+      cleanSpecialCharacters,
     });
 
     if (hasFile) await OrderFile.create({ orderId: order._id, fileName: file.name, storageKey: `pending/${orderNumber}/${file.name}`, mimeType: file.type || null, sizeBytes: file.size });

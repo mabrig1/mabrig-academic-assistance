@@ -52,6 +52,11 @@ type OrderRow = {
   references?: boolean;
   coverPage?: boolean;
   conversionRequested?: boolean;
+  transformationMode?: string;
+  bodyAlignment?: string;
+  paragraphIndentation?: string;
+  boldHeadings?: boolean;
+  cleanSpecialCharacters?: boolean;
   createdAt?: Date | string;
 };
 
@@ -186,6 +191,9 @@ export default async function AdminPage() {
                 <div><span>Formatting</span><strong>{order.font || "Times New Roman"} {order.fontSize || 12}pt • {order.spacing || "1.5"} spacing</strong></div>
                 <div><span>Requested output</span><strong>{order.requestedFormat || "DOCX"}</strong></div>
                 <div><span>Academic options</span><strong>{[order.citations && "Citations", order.references && "References", order.coverPage && "Cover page", order.conversionRequested && "Convert/format"].filter(Boolean).join(" • ") || "None selected"}</strong></div>
+                <div><span>Text treatment</span><strong>{label(order.transformationMode || "FORMAT")}</strong></div>
+                <div><span>Paragraph layout</span><strong>{label(order.bodyAlignment || "JUSTIFIED")} • {label(order.paragraphIndentation || "FIRST-LINE")}</strong></div>
+                <div><span>Cleanup</span><strong>{[order.boldHeadings !== false && "Bold headings", order.cleanSpecialCharacters !== false && "Special-character cleanup"].filter(Boolean).join(" • ") || "Disabled"}</strong></div>
                 <div><span>Conversion source</span><strong>{order.conversionSource ? label(order.conversionSource) : content ? "PASTE / LEGACY TEXT" : "NOT READY"}</strong></div>
                 <div><span>Payment</span><strong>{order.payment?.status || "NO PAYMENT RECORD"}</strong>{order.payment?.reference && <small>{order.payment.reference}</small>}</div>
                 <div><span>Delivery</span><strong>{order.delivery ? `${order.delivery.location || "Campus"} • ${order.delivery.status || "PENDING"}` : "No delivery"}</strong>{order.delivery?.addressNote && <small>{order.delivery.addressNote}</small>}</div>

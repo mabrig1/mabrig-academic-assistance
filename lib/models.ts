@@ -45,6 +45,11 @@ const orderSchema = new Schema({
   references: { type: Boolean, default: false },
   coverPage: { type: Boolean, default: false },
   conversionRequested: { type: Boolean, default: false },
+  transformationMode: { type: String, enum: ["format", "proofread", "rewrite"], default: "proofread" },
+  bodyAlignment: { type: String, enum: ["left", "justified"], default: "justified" },
+  paragraphIndentation: { type: String, enum: ["none", "first-line", "first-line-wide"], default: "first-line" },
+  boldHeadings: { type: Boolean, default: true },
+  cleanSpecialCharacters: { type: Boolean, default: true },
 }, { timestamps: true });
 
 const orderFileSchema = new Schema({
