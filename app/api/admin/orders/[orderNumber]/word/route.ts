@@ -7,7 +7,13 @@ import {
   parseDocumentTransformationMode,
   transformAcademicText,
 } from "@/lib/ai-document-transform";
-import { parseBodyAlignment, parseParagraphIndentation } from "@/lib/document-format-options";
+import {
+  parseBodyAlignment,
+  parseDocumentLineSpacing,
+  parseHeadingPreset,
+  parsePageNumberPosition,
+  parseParagraphIndentation,
+} from "@/lib/document-format-options";
 
 export const runtime = "nodejs";
 
@@ -31,6 +37,13 @@ type OrderDoc = {
   paragraphIndentation?: string;
   boldHeadings?: boolean;
   cleanSpecialCharacters?: boolean;
+  pageNumberPosition?: string;
+  headingPreset?: string;
+  headerText?: string | null;
+  footerText?: string | null;
+  automaticTableOfContents?: boolean;
+  apaFormatting?: boolean;
+  widowOrphanControl?: boolean;
 };
 
 function safeFilename(value: string) {
@@ -74,13 +87,20 @@ export async function GET(_request: Request, context: RouteContext) {
       orderNumber: order.orderNumber || orderNumber,
       font: order.font || "Times New Roman",
       fontSize: order.fontSize || 12,
-      spacing: order.spacing || "1.5",
+      spacing: parseDocumentLineSpacing(order.spacing),
       coverPage: Boolean(order.coverPage),
       references: Boolean(order.references),
       bodyAlignment: parseBodyAlignment(order.bodyAlignment),
       paragraphIndentation: parseParagraphIndentation(order.paragraphIndentation),
       boldHeadings: order.boldHeadings !== false,
       cleanSpecialCharacters: order.cleanSpecialCharacters !== false,
+      pageNumberPosition: parsePageNumberPosition(order.pageNumberPosition),
+      headingPreset: parseHeadingPreset(order.headingPreset),
+      headerText: order.headerText || "",
+      footerText: order.footerText || "",
+      automaticTableOfContents: Boolean(order.automaticTableOfContents),
+      apaFormatting: Boolean(order.apaFormatting),
+      widowOrphanControl: order.widowOrphanControl !== false,
     });
 
     const filename = safeFilename(`${title}-${user?.name || "student"}-${order.orderNumber || orderNumber}.docx`);
