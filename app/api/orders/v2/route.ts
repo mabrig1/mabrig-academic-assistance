@@ -7,6 +7,9 @@ import { parseDocumentTransformationMode } from "@/lib/ai-document-transform";
 import {
   formToggleEnabled,
   parseBodyAlignment,
+  parseDocumentLineSpacing,
+  parseHeadingPreset,
+  parsePageNumberPosition,
   parseParagraphIndentation,
 } from "@/lib/document-format-options";
 
@@ -60,7 +63,7 @@ export async function POST(request: Request) {
     const deliveryLocation = String(form.get("deliveryLocation") || "").trim();
     const deliveryNote = String(form.get("deliveryNote") || "").trim();
     const requestedFormat = String(form.get("requestedFormat") || "DOCX").trim();
-    const spacing = String(form.get("spacing") || "1.5").trim();
+    const spacing = parseDocumentLineSpacing(form.get("spacing"));
     const font = String(form.get("font") || "Times New Roman").trim();
     const fontSize = Number(form.get("fontSize") || 12);
     const citations = form.get("citations") === "on";
@@ -72,6 +75,13 @@ export async function POST(request: Request) {
     const paragraphIndentation = parseParagraphIndentation(form.get("paragraphIndentation"));
     const boldHeadings = formToggleEnabled(form, "boldHeadings");
     const cleanSpecialCharacters = formToggleEnabled(form, "cleanSpecialCharacters");
+    const pageNumberPosition = parsePageNumberPosition(form.get("pageNumberPosition"));
+    const headingPreset = parseHeadingPreset(form.get("headingPreset"));
+    const headerText = String(form.get("headerText") || "").trim().slice(0, 160) || null;
+    const footerText = String(form.get("footerText") || "").trim().slice(0, 160) || null;
+    const automaticTableOfContents = formToggleEnabled(form, "automaticTableOfContents", false);
+    const apaFormatting = formToggleEnabled(form, "apaFormatting", false);
+    const widowOrphanControl = formToggleEnabled(form, "widowOrphanControl");
     const file = form.get("file");
     const hasFile = file instanceof File && file.size > 0;
 
@@ -144,6 +154,13 @@ export async function POST(request: Request) {
       paragraphIndentation,
       boldHeadings,
       cleanSpecialCharacters,
+      pageNumberPosition,
+      headingPreset,
+      headerText,
+      footerText,
+      automaticTableOfContents,
+      apaFormatting,
+      widowOrphanControl,
     });
 
     if (hasFile) await OrderFile.create({ orderId: order._id, fileName: file.name, storageKey: `pending/${orderNumber}/${file.name}`, mimeType: file.type || null, sizeBytes: file.size });
