@@ -97,10 +97,10 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
 
         <label className="field"><span>Font size</span><input name="fontSize" type="number" min="8" max="30" defaultValue="12" /></label>
         <label className="field"><span>Text treatment</span>
-          <select name="transformationMode" defaultValue="proofread">
+          <select name="transformationMode" defaultValue="format">
+            <option value="format">Format only — reliable, no AI required</option>
             <option value="proofread">Proofread &amp; improve clarity (AI)</option>
             <option value="rewrite">Rewrite for clarity and originality (AI)</option>
-            <option value="format">Format only — keep the wording</option>
           </select>
         </label>
         <label className="field"><span>Body alignment</span>
