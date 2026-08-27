@@ -55,6 +55,7 @@ export default function AdminConverterPage() {
                 <span>Line spacing</span>
                 <select name="spacing" defaultValue="1.5">
                   <option value="single">Single</option>
+                  <option value="1.15">1.15 lines</option>
                   <option value="1.5">1.5 lines</option>
                   <option value="double">Double</option>
                 </select>
@@ -82,11 +83,42 @@ export default function AdminConverterPage() {
                   <option value="none">No first-line indentation</option>
                 </select>
               </label>
+              <label className="field">
+                <span>Heading style</span>
+                <select name="headingPreset" defaultValue="academic">
+                  <option value="academic">Classic academic hierarchy</option>
+                  <option value="apa7">APA 7 heading hierarchy</option>
+                  <option value="compact">Compact report hierarchy</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>Page numbers</span>
+                <select name="pageNumberPosition" defaultValue="footer-center">
+                  <option value="footer-center">Footer — centred</option>
+                  <option value="footer-right">Footer — right</option>
+                  <option value="header-right">Header — right</option>
+                  <option value="none">No page numbers</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>Header text (optional)</span>
+                <input name="headerText" maxLength={160} placeholder="Short title or department" />
+              </label>
+              <label className="field">
+                <span>Footer text (optional)</span>
+                <input name="footerText" maxLength={160} placeholder="Student name, course or institution" />
+              </label>
               <div className="field check-row">
                 <input type="hidden" name="boldHeadings" value="off" />
                 <input type="hidden" name="cleanSpecialCharacters" value="off" />
+                <input type="hidden" name="automaticTableOfContents" value="off" />
+                <input type="hidden" name="apaFormatting" value="off" />
+                <input type="hidden" name="widowOrphanControl" value="off" />
                 <label><input type="checkbox" name="boldHeadings" value="on" defaultChecked /> Bold headings</label>
                 <label><input type="checkbox" name="cleanSpecialCharacters" value="on" defaultChecked /> Remove stray special / Markdown characters</label>
+                <label><input type="checkbox" name="automaticTableOfContents" value="on" /> Automatic contents page</label>
+                <label><input type="checkbox" name="apaFormatting" value="on" /> APA 7 paper formatting</label>
+                <label><input type="checkbox" name="widowOrphanControl" value="on" defaultChecked /> Prevent widow / orphan lines</label>
                 <label><input type="checkbox" name="coverPage" /> Add cover page</label>
                 <label><input type="checkbox" name="references" /> Format references with hanging indent</label>
               </div>
@@ -97,7 +129,7 @@ export default function AdminConverterPage() {
             </div>
 
             <div className="notice" style={{ marginTop: 16 }}>
-              <strong>Smart academic conversion:</strong> AI modes genuinely improve or rewrite the wording before Word generation. Format-only mode preserves the wording but converts Markdown headings, emphasis, lists and quotations into real Word formatting.
+              <strong>Smart academic conversion:</strong> AI modes genuinely improve or rewrite the wording before Word generation. APA 7 applies double spacing, left alignment, 0.5-inch first-line indents, APA headings, hanging references and top-right page numbering. The automatic contents page reads real Heading 1–3 styles.
             </div>
             <div className="notice" style={{ marginTop: 10 }}>
               <strong>AI connection:</strong> {aiConfigured ? `Configured${aiModel ? ` with ${aiModel}` : ""}.` : "Not fully configured. Add AI_API_KEY, AI_BASE_URL and AI_MODEL in Vercel, then redeploy."}
