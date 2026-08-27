@@ -57,6 +57,13 @@ type OrderRow = {
   paragraphIndentation?: string;
   boldHeadings?: boolean;
   cleanSpecialCharacters?: boolean;
+  pageNumberPosition?: string;
+  headingPreset?: string;
+  headerText?: string | null;
+  footerText?: string | null;
+  automaticTableOfContents?: boolean;
+  apaFormatting?: boolean;
+  widowOrphanControl?: boolean;
   createdAt?: Date | string;
 };
 
@@ -193,6 +200,9 @@ export default async function AdminPage() {
                 <div><span>Academic options</span><strong>{[order.citations && "Citations", order.references && "References", order.coverPage && "Cover page", order.conversionRequested && "Convert/format"].filter(Boolean).join(" • ") || "None selected"}</strong></div>
                 <div><span>Text treatment</span><strong>{label(order.transformationMode || "FORMAT")}</strong></div>
                 <div><span>Paragraph layout</span><strong>{label(order.bodyAlignment || "JUSTIFIED")} • {label(order.paragraphIndentation || "FIRST-LINE")}</strong></div>
+                <div><span>Heading / pages</span><strong>{label(order.headingPreset || "ACADEMIC")} • {label(order.pageNumberPosition || "FOOTER-CENTER")}</strong></div>
+                <div><span>Advanced Word options</span><strong>{[order.automaticTableOfContents && "Contents page", order.apaFormatting && "APA 7", order.widowOrphanControl !== false && "Widow/orphan control"].filter(Boolean).join(" • ") || "None selected"}</strong></div>
+                <div><span>Header / footer</span><strong>{[order.headerText && `Header: ${order.headerText}`, order.footerText && `Footer: ${order.footerText}`].filter(Boolean).join(" • ") || "No custom text"}</strong></div>
                 <div><span>Cleanup</span><strong>{[order.boldHeadings !== false && "Bold headings", order.cleanSpecialCharacters !== false && "Special-character cleanup"].filter(Boolean).join(" • ") || "Disabled"}</strong></div>
                 <div><span>Conversion source</span><strong>{order.conversionSource ? label(order.conversionSource) : content ? "PASTE / LEGACY TEXT" : "NOT READY"}</strong></div>
                 <div><span>Payment</span><strong>{order.payment?.status || "NO PAYMENT RECORD"}</strong>{order.payment?.reference && <small>{order.payment.reference}</small>}</div>
