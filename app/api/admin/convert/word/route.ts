@@ -7,6 +7,9 @@ import {
 import {
   formToggleEnabled,
   parseBodyAlignment,
+  parseDocumentLineSpacing,
+  parseHeadingPreset,
+  parsePageNumberPosition,
   parseParagraphIndentation,
 } from "@/lib/document-format-options";
 import { buildAcademicWordDocument } from "@/lib/word-document";
@@ -27,7 +30,7 @@ export async function POST(request: Request) {
     const studentName = String(form.get("studentName") || "").trim();
     const font = String(form.get("font") || "Times New Roman").trim() || "Times New Roman";
     const fontSize = Math.min(30, Math.max(8, Number(form.get("fontSize") || 12)));
-    const spacing = String(form.get("spacing") || "1.5");
+    const spacing = parseDocumentLineSpacing(form.get("spacing"));
     const coverPage = form.get("coverPage") === "on";
     const references = form.get("references") === "on";
     const transformationMode = parseDocumentTransformationMode(form.get("transformationMode"));
@@ -35,6 +38,13 @@ export async function POST(request: Request) {
     const paragraphIndentation = parseParagraphIndentation(form.get("paragraphIndentation"));
     const boldHeadings = formToggleEnabled(form, "boldHeadings");
     const cleanSpecialCharacters = formToggleEnabled(form, "cleanSpecialCharacters");
+    const pageNumberPosition = parsePageNumberPosition(form.get("pageNumberPosition"));
+    const headingPreset = parseHeadingPreset(form.get("headingPreset"));
+    const headerText = String(form.get("headerText") || "").trim().slice(0, 160);
+    const footerText = String(form.get("footerText") || "").trim().slice(0, 160);
+    const automaticTableOfContents = formToggleEnabled(form, "automaticTableOfContents", false);
+    const apaFormatting = formToggleEnabled(form, "apaFormatting", false);
+    const widowOrphanControl = formToggleEnabled(form, "widowOrphanControl");
 
     if (!text) return NextResponse.json({ error: "Paste text before converting to Word." }, { status: 400 });
     if (text.length > MAX_CHARS) return NextResponse.json({ error: "Text is too long for the instant converter." }, { status: 413 });
@@ -53,6 +63,13 @@ export async function POST(request: Request) {
       paragraphIndentation,
       boldHeadings,
       cleanSpecialCharacters,
+      pageNumberPosition,
+      headingPreset,
+      headerText,
+      footerText,
+      automaticTableOfContents,
+      apaFormatting,
+      widowOrphanControl,
     });
 
     const filename = safeFilename(`${title || "academic-document"}.docx`);
