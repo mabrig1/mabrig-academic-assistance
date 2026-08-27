@@ -24,6 +24,7 @@ import type {
   HeadingPreset,
   PageNumberPosition,
   ParagraphIndentation,
+  ReferenceStyle,
 } from "./document-format-options";
 
 export type WordDocumentOptions = {
@@ -46,6 +47,8 @@ export type WordDocumentOptions = {
   headingPreset?: HeadingPreset;
   automaticTableOfContents?: boolean;
   apaFormatting?: boolean;
+  referenceStyle?: ReferenceStyle;
+  removeEmptyParagraphs?: boolean;
   widowOrphanControl?: boolean;
 };
 
@@ -56,7 +59,8 @@ type DocumentBlock =
   | { kind: "quote"; text: string }
   | { kind: "bullet"; text: string }
   | { kind: "checklist"; text: string; checked: boolean }
-  | { kind: "number"; text: string; group: number };
+  | { kind: "number"; text: string; group: number }
+  | { kind: "spacer" };
 
 function lineSpacing(value?: string) {
   if (value === "single") return 240;
@@ -237,14 +241,14 @@ function isHeading(value: string) {
   if (!line || line.length > 140) return false;
 
   return (
-    /^(chapter\s+([ivxlcdm]+|\d+)|abstract|introduction|background( of the study)?|statement of the problem|objectives? of the study|research questions?|research hypotheses?|significance of the study|scope of the study|literature review|methodology|research methodology|results?|findings?|discussion( of findings)?|summary|conclusion|recommendations?|references|bibliography|appendix|appendices)$/i.test(line) ||
+    /^(chapter\s+([ivxlcdm]+|\d+)|abstract|introduction|background( of the study)?|statement of the problem|objectives? of the study|research questions?|research hypotheses?|significance of the study|scope of the study|literature review|methodology|research methodology|results?|findings?|discussion( of findings)?|summary|conclusion|recommendations?|references|bibliography|works cited|appendix|appendices)$/i.test(line) ||
     /^\d+(\.\d+){0,3}\s+[A-Z][\s\S]{1,120}$/.test(line) ||
     /^[A-Z][A-Z\s&,:()\-]{5,120}$/.test(line)
   );
 }
 
 function isReferenceHeading(value: string) {
-  return /^(references|bibliography)$/i.test(stripMarkdownForHeading(value));
+  return /^(references|bibliography|works cited)$/i.test(stripMarkdownForHeading(value));
 }
 
 function isLabeledParagraph(value: string) {
@@ -275,7 +279,7 @@ function shouldJoinWrappedLine(current: string, next: string) {
   return current.length >= 90 || /^[a-z]/.test(next);
 }
 
-function parseDocumentBlocks(value: string, cleanSpecialCharacters: boolean) {
+function parseDocumentBlocks(value: string, cleanSpecialCharacters: boolean, removeEmptyParagraphs: boolean) {
   const lines = cleanText(value, cleanSpecialCharacters).split("\n");
   const blocks: DocumentBlock[] = [];
   let paragraphLines: string[] = [];
@@ -298,7 +302,12 @@ function parseDocumentBlocks(value: string, cleanSpecialCharacters: boolean) {
     const line = rawLine.trim();
     if (!line) {
       flushParagraph();
-      previousKind = "";
+      if (!removeEmptyParagraphs && blocks.length > 0 && previousKind !== "spacer") {
+        blocks.push({ kind: "spacer" });
+        previousKind = "spacer";
+      } else if (removeEmptyParagraphs) {
+        previousKind = "";
+      }
       continue;
     }
 
@@ -451,6 +460,10 @@ function makeBlockParagraph(options: {
   } = options;
   const normalSize = fontSize * 2;
 
+  if (block.kind === "spacer") {
+    return new Paragraph({ spacing: { after: 120 }, children: [] });
+  }
+
   if (block.kind === "title") {
     return new Paragraph({
       style: "AcademicTitle",
@@ -558,22 +571,27 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
   const text = cleanText(options.text, cleanSpecialCharacters);
   if (!text) throw new Error("No document text was supplied for Word conversion.");
 
-  const apaFormatting = Boolean(options.apaFormatting);
-  const font = apaFormatting ? "Times New Roman" : ((options.font || "Times New Roman").trim() || "Times New Roman");
-  const fontSize = apaFormatting ? 12 : Math.min(30, Math.max(8, Number(options.fontSize || 12)));
-  const spacing = lineSpacing(apaFormatting ? "double" : options.spacing);
-  const paragraphIndentation = apaFormatting ? "first-line" : (options.paragraphIndentation || "first-line");
-  const bodyAlignment = apaFormatting ? "left" : (options.bodyAlignment || "justified");
-  const boldHeadings = apaFormatting || options.boldHeadings !== false;
+  const referenceStyle: ReferenceStyle = options.referenceStyle || (options.apaFormatting ? "apa7" : "none");
+  const apaFormatting = Boolean(options.apaFormatting || referenceStyle === "apa7");
+  const mlaFormatting = referenceStyle === "mla9";
+  const standardFormatting = apaFormatting || mlaFormatting;
+  const font = standardFormatting ? "Times New Roman" : ((options.font || "Times New Roman").trim() || "Times New Roman");
+  const fontSize = standardFormatting ? 12 : Math.min(30, Math.max(8, Number(options.fontSize || 12)));
+  const spacing = lineSpacing(standardFormatting ? "double" : options.spacing);
+  const paragraphIndentation = standardFormatting ? "first-line" : (options.paragraphIndentation || "first-line");
+  const bodyAlignment = standardFormatting ? "left" : (options.bodyAlignment || "justified");
+  const boldHeadings = standardFormatting || options.boldHeadings !== false;
   const headingPreset = apaFormatting ? "apa7" : (options.headingPreset || "academic");
-  const pageNumberPosition = apaFormatting ? "header-right" : (options.pageNumberPosition || "footer-center");
-  const references = apaFormatting || Boolean(options.references);
+  const pageNumberPosition = standardFormatting ? "header-right" : (options.pageNumberPosition || "footer-center");
+  const references = standardFormatting || Boolean(options.references);
   const automaticTableOfContents = Boolean(options.automaticTableOfContents);
+  const removeEmptyParagraphs = options.removeEmptyParagraphs !== false;
   const widowOrphanControl = options.widowOrphanControl !== false;
-  const headerText = cleanText(options.headerText || "", cleanSpecialCharacters).slice(0, 160);
+  const mlaSurname = options.studentName?.trim().split(/\s+/).at(-1) || "";
+  const headerText = cleanText(options.headerText || (mlaFormatting ? mlaSurname : ""), cleanSpecialCharacters).slice(0, 160);
   const footerText = cleanText(options.footerText || "", cleanSpecialCharacters).slice(0, 160);
   const resolvedHeadingStyles = headingTokens(headingPreset, fontSize, boldHeadings);
-  const blocks = parseDocumentBlocks(text, cleanSpecialCharacters);
+  const blocks = parseDocumentBlocks(text, cleanSpecialCharacters, removeEmptyParagraphs);
   const tocEntries = blocks
     .filter((block): block is Extract<DocumentBlock, { kind: "heading" }> => block.kind === "heading")
     .map(block => ({
@@ -634,11 +652,14 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
 
   blocks.forEach((block, index) => {
     if (block.kind === "heading") referenceMode = isReferenceHeading(block.text);
-    const outputBlock: DocumentBlock = referenceMode && references && (
-      block.kind === "number" || block.kind === "bullet" || block.kind === "checklist"
-    )
-      ? { kind: "paragraph", text: block.text }
+    const styledBlock: DocumentBlock = referenceMode && block.kind === "heading" && referenceStyle !== "none"
+      ? { ...block, text: referenceStyle === "mla9" ? "Works Cited" : "References" }
       : block;
+    const outputBlock: DocumentBlock = referenceMode && references && (
+      styledBlock.kind === "number" || styledBlock.kind === "bullet" || styledBlock.kind === "checklist"
+    )
+      ? { kind: "paragraph", text: styledBlock.text }
+      : styledBlock;
     body.push(makeBlockParagraph({
       block: outputBlock,
       font,
@@ -654,8 +675,8 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
     }));
   });
 
-  const header = makeHeader({ text: headerText, font, pageNumberPosition, apaFormatting });
-  const footer = makeFooter({ text: footerText, font, pageNumberPosition, apaFormatting });
+  const header = makeHeader({ text: headerText, font, pageNumberPosition, apaFormatting: standardFormatting });
+  const footer = makeFooter({ text: footerText, font, pageNumberPosition, apaFormatting: standardFormatting });
   const heading1 = resolvedHeadingStyles[1];
   const heading2 = resolvedHeadingStyles[2];
   const heading3 = resolvedHeadingStyles[3];

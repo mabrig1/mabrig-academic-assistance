@@ -3,6 +3,7 @@ export type BodyAlignment = "left" | "justified";
 export type DocumentLineSpacing = "single" | "1.15" | "1.5" | "double";
 export type HeadingPreset = "academic" | "apa7" | "compact";
 export type PageNumberPosition = "none" | "header-right" | "footer-center" | "footer-right";
+export type ReferenceStyle = "none" | "apa7" | "mla9";
 
 export function parseParagraphIndentation(value: unknown): ParagraphIndentation {
   return value === "none" || value === "first-line-wide" ? value : "first-line";
@@ -24,6 +25,10 @@ export function parsePageNumberPosition(value: unknown): PageNumberPosition {
   return value === "none" || value === "header-right" || value === "footer-right"
     ? value
     : "footer-center";
+}
+
+export function parseReferenceStyle(value: unknown): ReferenceStyle {
+  return value === "apa7" || value === "mla9" ? value : "none";
 }
 
 export function formToggleEnabled(form: FormData, name: string, fallback = true) {
