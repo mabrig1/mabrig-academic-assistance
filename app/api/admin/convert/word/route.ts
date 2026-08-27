@@ -86,6 +86,7 @@ export async function POST(request: Request) {
         "X-Content-Type-Options": "nosniff",
         "X-Text-Transformation": transformationMode,
         "X-Text-Changed": transformed.changed ? "true" : "false",
+        "X-AI-Used": transformationMode === "format" ? "false" : "true",
       },
     });
   } catch (error) {

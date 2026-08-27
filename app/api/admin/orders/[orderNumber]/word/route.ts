@@ -53,7 +53,7 @@ function safeFilename(value: string) {
   return value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-").slice(0, 100);
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   try {
     const { orderNumber: rawOrderNumber } = await context.params;
     const orderNumber = decodeURIComponent(rawOrderNumber || "").trim();
@@ -80,7 +80,10 @@ export async function GET(_request: Request, context: RouteContext) {
     const user = userResult as { name?: string } | null;
     const service = serviceResult as { name?: string } | null;
     const title = order.documentTitle || service?.name || "Academic Document";
-    const transformationMode = parseDocumentTransformationMode(order.transformationMode);
+    const requestedMode = new URL(request.url).searchParams.get("mode");
+    const transformationMode = requestedMode === "ai"
+      ? parseDocumentTransformationMode(order.transformationMode)
+      : "format";
     const transformed = await transformAcademicText({ text, title, mode: transformationMode });
 
     const buffer = await buildAcademicWordDocument({
@@ -108,7 +111,8 @@ export async function GET(_request: Request, context: RouteContext) {
       widowOrphanControl: order.widowOrphanControl !== false,
     });
 
-    const filename = safeFilename(`${title}-${user?.name || "student"}-${order.orderNumber || orderNumber}.docx`);
+    const outputLabel = transformationMode === "format" ? "formatted" : transformationMode;
+    const filename = safeFilename(`${title}-${user?.name || "student"}-${order.orderNumber || orderNumber}-${outputLabel}.docx`);
     return new Response(new Uint8Array(buffer), {
       status: 200,
       headers: {
@@ -118,6 +122,7 @@ export async function GET(_request: Request, context: RouteContext) {
         "X-Content-Type-Options": "nosniff",
         "X-Text-Transformation": transformationMode,
         "X-Text-Changed": transformed.changed ? "true" : "false",
+        "X-AI-Used": transformationMode === "format" ? "false" : "true",
       },
     });
   } catch (error) {

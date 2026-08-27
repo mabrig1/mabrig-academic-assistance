@@ -62,10 +62,10 @@ export default function AdminConverterPage() {
               </label>
               <label className="field">
                 <span>Text treatment</span>
-                <select name="transformationMode" defaultValue="proofread">
+                <select name="transformationMode" defaultValue="format">
+                  <option value="format">Format only — reliable, no AI required</option>
                   <option value="proofread">Proofread &amp; improve clarity (AI)</option>
                   <option value="rewrite">Rewrite for clarity and originality (AI)</option>
-                  <option value="format">Format only — keep the wording</option>
                 </select>
               </label>
               <label className="field">
@@ -143,7 +143,7 @@ export default function AdminConverterPage() {
             <div className="notice" style={{ marginTop: 10 }}>
               <strong>AI connection:</strong> {aiConfigured ? `Configured${aiModel ? ` with ${aiModel}` : ""}.` : "Not fully configured. Add AI_API_KEY, AI_BASE_URL and AI_MODEL in Vercel, then redeploy."}
             </div>
-            <button className="btn primary conversion-download-btn" type="submit">⚡ Generate Formatted Word (.docx)</button>
+            <button className="btn primary conversion-download-btn" type="submit">⚡ Download Word Document (.docx)</button>
           </form>
         </article>
 

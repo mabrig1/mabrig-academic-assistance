@@ -131,6 +131,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const statusFilter = ALL_STATUSES.has(requestedStatus) ? requestedStatus : "";
   const whatsappNotificationsReady = Boolean(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID);
   const telegramNotificationsReady = Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_ADMIN_CHAT_ID);
+  const aiConfigured = Boolean(process.env.AI_API_KEY && process.env.AI_BASE_URL && process.env.AI_MODEL);
 
   const [total, students, rawOrders] = await Promise.all([
     Order.countDocuments(),
@@ -306,15 +307,17 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   <h4>{conversionReady ? "This order is ready for instant Word generation" : "Automatic Word generation is not ready for this order"}</h4>
                   <p>
                     {conversionReady
-                      ? `Generate a clean .docx using ${order.font || "Times New Roman"}, ${order.fontSize || 12}pt and ${order.spacing || "1.5"} spacing.`
+                      ? `Download a clean .docx using ${order.font || "Times New Roman"}, ${order.fontSize || 12}pt and ${order.spacing || "1.5"} spacing. Standard formatting works without AI.`
                       : "Older uploads or unsupported file types may not contain stored convertible text. Use the Conversion Studio and paste the text manually."}
                   </p>
                   {order.conversionWarning && <small className="conversion-warning">{order.conversionWarning}</small>}
                 </div>
                 <div className="conversion-panel-actions">
-                  {originalDownloadReady && <a className="btn secondary" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/file`}>Download Original</a>}
-                  {hasSubmittedFile && !originalDownloadReady && <span className="btn admin-file-disabled" title="Older submissions did not retain the original file bytes.">Original unavailable — legacy order</span>}
-                  {conversionReady && <a className="btn conversion-btn" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/word`}>Generate Formatted Word (.docx)</a>}
+                  {conversionReady && <a className="btn conversion-btn" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/word?mode=format`}>Download Formatted Word (.docx)</a>}
+                  {conversionReady && order.transformationMode !== "format" && aiConfigured && <a className="btn secondary" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/word?mode=ai`}>AI {order.transformationMode === "rewrite" ? "Rewrite" : "Proofread"} &amp; Format</a>}
+                  {conversionReady && order.transformationMode !== "format" && !aiConfigured && <span className="btn admin-file-disabled" title="Configure AI_API_KEY, AI_BASE_URL and AI_MODEL to enable AI editing.">AI editing unavailable</span>}
+                  {originalDownloadReady && <a className="btn secondary" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/file`}>Download Uploaded Original (Unformatted)</a>}
+                  {hasSubmittedFile && !originalDownloadReady && <span className="btn admin-file-disabled" title="Older submissions did not retain the original file bytes.">Uploaded original unavailable — legacy order</span>}
                   <a className="btn secondary" href="/admin/converter">Open Conversion Studio</a>
                 </div>
               </div>
@@ -331,7 +334,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     <p><strong>{order.file.fileName || "Uploaded file"}</strong></p>
                     <small>{order.file.mimeType || "Unknown type"} • {order.file.sizeBytes ? `${Math.ceil(order.file.sizeBytes / 1024)} KB` : "size unknown"}</small>
                     {originalDownloadReady
-                      ? <a className="btn admin-file-download" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/file`}>Download submitted file</a>
+                      ? <a className="btn admin-file-download" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/file`}>Download uploaded original (unformatted)</a>
                       : <p className="admin-file-unavailable">Legacy metadata only — original file was not retained.</p>}
                   </> : <p>No file uploaded.</p>}
                 </div>
