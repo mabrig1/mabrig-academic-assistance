@@ -89,7 +89,7 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         <label className="field"><span>Copies</span><input name="copies" type="number" min="1" max="100" defaultValue="1" /></label>
 
         <label className="field"><span>Spacing</span>
-          <select name="spacing" defaultValue="1.5"><option value="single">Single</option><option value="1.5">1.5 lines</option><option value="double">Double</option></select>
+          <select name="spacing" defaultValue="1.5"><option value="single">Single</option><option value="1.15">1.15 lines</option><option value="1.5">1.5 lines</option><option value="double">Double</option></select>
         </label>
         <label className="field"><span>Font</span>
           <select name="font" defaultValue="Times New Roman"><option>Times New Roman</option><option>Arial</option><option>Calibri</option><option>Georgia</option></select>
@@ -116,6 +116,23 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
             <option value="none">No first-line indentation</option>
           </select>
         </label>
+        <label className="field"><span>Heading style</span>
+          <select name="headingPreset" defaultValue="academic">
+            <option value="academic">Classic academic hierarchy</option>
+            <option value="apa7">APA 7 heading hierarchy</option>
+            <option value="compact">Compact report hierarchy</option>
+          </select>
+        </label>
+        <label className="field"><span>Page numbers</span>
+          <select name="pageNumberPosition" defaultValue="footer-center">
+            <option value="footer-center">Footer — centred</option>
+            <option value="footer-right">Footer — right</option>
+            <option value="header-right">Header — right</option>
+            <option value="none">No page numbers</option>
+          </select>
+        </label>
+        <label className="field"><span>Header text (optional)</span><input name="headerText" maxLength={160} placeholder="Short title or department" /></label>
+        <label className="field"><span>Footer text (optional)</span><input name="footerText" maxLength={160} placeholder="Student name, course or institution" /></label>
         <label className="field"><span>Production</span>
           <select name="printOption" value={printOption} onChange={e => setPrintOption(e.target.value)}>
             <option value="DIGITAL_ONLY">Word conversion / digital processing only</option>
@@ -145,8 +162,14 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         <div className="field full check-row">
           <input type="hidden" name="boldHeadings" value="off" />
           <input type="hidden" name="cleanSpecialCharacters" value="off" />
+          <input type="hidden" name="automaticTableOfContents" value="off" />
+          <input type="hidden" name="apaFormatting" value="off" />
+          <input type="hidden" name="widowOrphanControl" value="off" />
           <label><input name="boldHeadings" value="on" type="checkbox" defaultChecked /> Bold headings</label>
           <label><input name="cleanSpecialCharacters" value="on" type="checkbox" defaultChecked /> Remove stray special / Markdown characters</label>
+          <label><input name="automaticTableOfContents" value="on" type="checkbox" /> Automatic contents page</label>
+          <label><input name="apaFormatting" value="on" type="checkbox" /> APA 7 paper formatting</label>
+          <label><input name="widowOrphanControl" value="on" type="checkbox" defaultChecked /> Prevent widow / orphan lines</label>
           <label><input name="citations" type="checkbox" /> Citations</label>
           <label><input name="references" type="checkbox" /> References / hanging indent</label>
           <label><input name="coverPage" type="checkbox" /> Cover page</label>
@@ -157,7 +180,7 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         <input type="hidden" name="referralCode" value={referralCode} />
       </div>
 
-      <div className="notice" style={{marginTop:16}}><strong>Word superpower:</strong> Times New Roman, 12pt and 1.5 spacing are selected by default. Choose an AI mode to genuinely improve the wording, or Format only to keep every sentence while converting headings, emphasis and lists into clean Word formatting.</div>
+      <div className="notice" style={{marginTop:16}}><strong>Word superpower:</strong> Times New Roman, 12pt and 1.5 spacing are selected by default. APA 7 automatically applies double spacing, left alignment, 0.5-inch paragraph indents, APA headings, hanging references and page numbers at the top right. The contents page uses real Heading 1–3 styles.</div>
       <div className="notice" style={{marginTop:10}}>Academic integrity: this service supports editing, formatting, proofreading and document production. Students remain responsible for assessed submissions.</div>
       <button className="btn primary" style={{marginTop:16}} type="submit" disabled={submitting}>{submitting ? "Preparing conversion..." : "Submit, Format & Convert to Word"}</button>
       {message && <p className="form-message" aria-live="polite">{message}</p>}
