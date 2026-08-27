@@ -1,5 +1,8 @@
 export type ParagraphIndentation = "none" | "first-line" | "first-line-wide";
 export type BodyAlignment = "left" | "justified";
+export type DocumentLineSpacing = "single" | "1.15" | "1.5" | "double";
+export type HeadingPreset = "academic" | "apa7" | "compact";
+export type PageNumberPosition = "none" | "header-right" | "footer-center" | "footer-right";
 
 export function parseParagraphIndentation(value: unknown): ParagraphIndentation {
   return value === "none" || value === "first-line-wide" ? value : "first-line";
@@ -7,6 +10,20 @@ export function parseParagraphIndentation(value: unknown): ParagraphIndentation 
 
 export function parseBodyAlignment(value: unknown): BodyAlignment {
   return value === "left" ? "left" : "justified";
+}
+
+export function parseDocumentLineSpacing(value: unknown): DocumentLineSpacing {
+  return value === "single" || value === "1.15" || value === "double" ? value : "1.5";
+}
+
+export function parseHeadingPreset(value: unknown): HeadingPreset {
+  return value === "apa7" || value === "compact" ? value : "academic";
+}
+
+export function parsePageNumberPosition(value: unknown): PageNumberPosition {
+  return value === "none" || value === "header-right" || value === "footer-right"
+    ? value
+    : "footer-center";
 }
 
 export function formToggleEnabled(form: FormData, name: string, fallback = true) {
