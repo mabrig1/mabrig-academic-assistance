@@ -5,11 +5,11 @@ import { useState } from "react";
 const SITE_URL = "https://academic.mabrigkorie.org/academic-printing";
 const ORDER_URL = "/academic-printing/order";
 const WHATSAPP_NUMBER = "2347065342818";
-const SHARE_TEXT = "🎓 Deadline close? Upload or paste up to 100 pages to Mabrig Academic Assistance for UNN project formatting, printing, binding and campus delivery.";
+const SHARE_TEXT = "🎓 Rewrite and humanize articles, format UNN projects, or upload up to 100 pages for printing, binding and campus delivery with Mabrig Academic Assistance.";
 
 const shareUrl = encodeURIComponent(SITE_URL);
 const shareText = encodeURIComponent(SHARE_TEXT);
-const contactText = encodeURIComponent("Hello Mabrig Academic Assistance. I want to use the up-to-100-page Academic Document Formatting & Printing service.");
+const contactText = encodeURIComponent("Hello Mabrig Academic Assistance. I want to use the Article Rewriter & Humanizer / Academic Document service.");
 
 export default function SpecialServicePoster() {
   const [shareMessage, setShareMessage] = useState("");
@@ -17,7 +17,7 @@ export default function SpecialServicePoster() {
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(SITE_URL);
-      setShareMessage("Link copied — share it with a student who needs it.");
+      setShareMessage("Link copied — share it with a student or author who needs it.");
     } catch {
       setShareMessage(`Copy this link: ${SITE_URL}`);
     }
@@ -28,24 +28,25 @@ export default function SpecialServicePoster() {
       <div className="container">
         <article className="poster-ad" aria-labelledby="special-service-title">
           <div className="poster-copy">
-            <span className="poster-kicker">🔥 SPECIAL STUDENT SERVICE • UNN</span>
-            <h2 id="special-service-title">Deadline Close? Don’t Let Formatting & Printing Delay Your Submission.</h2>
+            <span className="poster-kicker">🔥 SPECIAL STUDENT & AUTHOR SERVICES • UNN</span>
+            <h2 id="special-service-title">Rewrite. Humanize. Format. Print. Submit With Confidence.</h2>
             <p className="poster-lead">
-              Upload your academic work <strong>or paste it directly</strong> — up to <strong>100 pages</strong> with a <strong>4MB maximum file upload</strong> — and send it straight into our print-shop workflow. We review the requirements, format where needed, convert, print, bind and arrange campus delivery.
+              Upload an article, assignment, project or academic document <strong>or paste it directly</strong>. Use our <strong>Article Rewriter & Humanizer</strong> for smoother, more natural wording while preserving meaning, facts and citations, or send documents up to <strong>100 pages</strong> with a <strong>4MB maximum file upload</strong> into our formatting and print workflow.
             </p>
-            <p className="poster-punch">Your work is written. Let us make it submission-ready.</p>
+            <p className="poster-punch">From rough draft to clear, polished, submission-ready document.</p>
 
             <div className="poster-features" aria-label="Service features">
+              <span>Article Rewriter & Humanizer</span>
               <span>Upload or Paste</span>
               <span>UNN Undergraduate Project Format</span>
               <span>Times New Roman • 12pt</span>
               <span>UNN • 2.0 Double Spacing</span>
-              <span>Citations & References</span>
+              <span>Citations & References Preserved</span>
               <span>Binding & Campus Delivery</span>
             </div>
 
             <div className="poster-actions">
-              <a className="poster-btn poster-btn-primary" href={ORDER_URL}>📄 Upload or Paste My Work</a>
+              <a className="poster-btn poster-btn-primary" href={ORDER_URL}>✍️ Rewrite, Humanize or Format My Work</a>
               <a
                 className="poster-btn poster-btn-whatsapp"
                 href={`https://wa.me/${WHATSAPP_NUMBER}?text=${contactText}`}
@@ -69,10 +70,10 @@ export default function SpecialServicePoster() {
               <strong>₦100</strong>
               <small>per page</small>
             </div>
-            <p className="poster-note">Formatting, binding and delivery charges depend on the service selected.</p>
+            <p className="poster-note">Rewriting, humanizing, formatting, binding and delivery charges depend on the service selected.</p>
 
             <div className="poster-share">
-              <strong>Know a student with a deadline?</strong>
+              <strong>Know someone with a draft or deadline?</strong>
               <span>Share this service:</span>
               <div className="share-links">
                 <a href={`https://wa.me/?text=${shareText}%20${shareUrl}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>
