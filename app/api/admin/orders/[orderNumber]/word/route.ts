@@ -100,6 +100,8 @@ export async function GET(request: Request, context: RouteContext) {
       referencesRequested: Boolean(order.references),
     });
 
+    const formatPreset = parseFormatPreset(order.formatPreset);
+    const spacing = formatPreset === "unn" ? "2.0" : parseDocumentLineSpacing(order.spacing);
     const buffer = await buildAcademicWordDocument({
       text: transformed.text,
       title,
@@ -107,8 +109,8 @@ export async function GET(request: Request, context: RouteContext) {
       orderNumber: order.orderNumber || orderNumber,
       font: order.font || "Times New Roman",
       fontSize: order.fontSize || 12,
-      spacing: parseDocumentLineSpacing(order.spacing),
-      formatPreset: parseFormatPreset(order.formatPreset),
+      spacing,
+      formatPreset,
       coverPage: Boolean(order.coverPage),
       references: Boolean(order.references),
       bodyAlignment: parseBodyAlignment(order.bodyAlignment),
