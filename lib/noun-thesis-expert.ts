@@ -45,7 +45,7 @@ function chapterTitle(chapter: number) {
   if (chapter === 1) return "INTRODUCTION";
   if (chapter === 2) return "REVIEW OF RELATED LITERATURE";
   if (chapter === 3) return "RESEARCH METHODOLOGY";
-  if (chapter === 4) return "DATA PRESENTATION, ANALYSIS AND DISCUSSION";
+  if (chapter === 4) return "DATA PRESENTATION, ANALYSIS AND DISCUSSION OF FINDINGS";
   return "SUMMARY, CONCLUSION AND RECOMMENDATIONS";
 }
 
@@ -87,12 +87,13 @@ function chapterStructure(chapter: number, postgraduate: boolean) {
   if (chapter === 4) {
     return [
       "4.1 Introduction",
-      "4.2 Response Rate where applicable",
-      "4.3 Demographic Analysis where applicable",
-      "4.4 Quantitative Data Analysis / Answers to Research Questions where applicable",
-      "4.5 Qualitative Data Analysis / Thematic Analysis where applicable",
+      "4.2 Data Presentation and Response Rate where applicable",
+      "4.3 Demographic Data Presentation and Analysis where applicable",
+      "4.4 Data Analysis and Answers to Research Questions",
+      "4.5 Qualitative/Thematic Analysis where applicable",
       "4.6 Test of Hypotheses where applicable",
       "4.7 Discussion of Findings",
+      "4.8 Summary of Major Findings",
     ];
   }
   return [
@@ -160,7 +161,7 @@ async function callAi(options: {
 }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
-  const targetWords = Math.max(900, Math.min(10_000, Math.round(options.targetPages * 350)));
+  const targetWords = Math.max(700, Math.min(9_000, Math.round(options.targetPages * 350)));
   const headers: Record<string, string> = {
     Authorization: `Bearer ${options.apiKey}`,
     "Content-Type": "application/json",
@@ -171,7 +172,7 @@ async function callAi(options: {
   }
 
   const paragraphInstruction = options.settings.paragraphTarget === "13-15-lines"
-    ? "Aim for substantial paragraphs of roughly 180–250 words, which approximates 13–15 lines in a typical Times New Roman 12pt double-spaced Word layout. Do not pad paragraphs merely to hit a visual line count."
+    ? "Aim for substantial paragraphs of roughly 180–250 words, approximating 13–15 lines in a typical Times New Roman 12pt double-spaced Word layout. Do not pad merely to hit a visual line count."
     : "Use well-developed academic paragraphs with natural variation in length.";
 
   const citationInstruction = options.settings.citationDensity === "intensive"
@@ -185,7 +186,7 @@ async function callAi(options: {
       signal: controller.signal,
       body: JSON.stringify({
         model: options.model,
-        temperature: 0.2,
+        temperature: 0.15,
         max_tokens: Math.min(12_000, Math.max(2_000, Math.ceil(targetWords * 1.7))),
         messages: [
           {
@@ -197,11 +198,12 @@ async function callAi(options: {
               "Use only references and data explicitly supplied in the verified source/data fields. Preserve supplied facts, citations and reference details accurately.",
               "If evidence is missing, insert [Add verified citation]. If data/results are missing, insert [Insert verified result/data].",
               "Do not cite Wikipedia, blogs or invented journal articles. Government statistics must come from official sources supplied by the administrator.",
-              "Use APA 7 author-year citations. Every citation you create must correspond to an identifiable supplied reference; do not create an author/year pair that is absent from the source pack.",
-              "Use Markdown headings (#, ##, ###) only for structure. Do not use code fences. Main prose should not contain decorative bold or italics.",
+              "Use APA 7 author-year citations. Every citation you create must correspond to an identifiable supplied reference; do not create an author/year pair absent from the source pack.",
+              "For data chapters, do not calculate or infer a new statistic unless the exact calculation/output is explicitly supplied. Present and interpret supplied values only.",
+              "Use Markdown headings (#, ##, ###) for structure. Use standard Markdown tables with pipe separators when tabular data are supplied. Do not use code fences. Main prose should not contain decorative bold or italics.",
               paragraphInstruction,
               citationInstruction,
-              options.settings.supervisorCorrections ? "Treat the supervisor corrections as mandatory. Revise existing wording where necessary while preserving verified evidence." : "",
+              options.settings.supervisorCorrections ? "Treat supervisor corrections as mandatory while preserving verified evidence." : "",
             ].filter(Boolean).join(" "),
           },
           {
@@ -240,7 +242,7 @@ function chapterExpertInstructions(input: NounThesisInput, settings: NounExpertS
   const postgraduate = input.degreeLevel === "masters" || input.degreeLevel === "phd";
   const base = [
     `Write # CHAPTER ${["ONE", "TWO", "THREE", "FOUR", "FIVE"][chapter - 1]} followed by # ${chapterTitle(chapter)}.`,
-    "Use the following structural headings in logical order unless the Faculty/Supervisor Instructions explicitly require a different approved structure:",
+    "Use the following structural headings in logical order unless Faculty/Supervisor Instructions explicitly require a different approved structure:",
     ...chapterStructure(chapter, postgraduate).map(item => `- ${item}`),
   ];
 
@@ -250,7 +252,7 @@ function chapterExpertInstructions(input: NounThesisInput, settings: NounExpertS
 
   if (chapter === 1) {
     base.push(
-      "Ensure specific objectives are measurable and align one-to-one with research questions. Do not invent objectives or hypotheses when approved versions were supplied; preserve and improve their wording only when the supervisor corrections require it.",
+      "Ensure specific objectives are measurable and align one-to-one with research questions. Preserve approved objectives/hypotheses when supplied.",
       "Definition of Key Terms should be operational and concise; it does not require forced citations.",
     );
   }
@@ -259,39 +261,174 @@ function chapterExpertInstructions(input: NounThesisInput, settings: NounExpertS
     base.push(
       "For 2.1 Conceptual Framework, use approximately eight meaningful thematic subheadings when the topic supports them. Do NOT use the phrase 'Concept of' in any heading.",
       `For 2.2 Theoretical Framework, use exactly ${settings.theoryCount} theories. For each theory: introduce it, state key tenets, explain criticisms/limitations where supported, and apply it directly to the study. Cite original proponents only when their source details are present in the verified source pack; otherwise insert [Add verified original-proponent citation].`,
-      `For 2.3 Empirical Review, target up to ${settings.empiricalStudyTarget} verified studies. Review only studies actually identifiable in the supplied source pack. For each verified empirical study, cover author/year, purpose, methodology/sample where supplied, findings where supplied, relevance and gap. Aim for roughly 200–300 words per study when enough source detail is available. If fewer verified studies are supplied, do not invent additional studies; insert a short [Add verified empirical study] placeholder list instead.`,
+      `For 2.3 Empirical Review, target up to ${settings.empiricalStudyTarget} verified studies. Review only studies identifiable in the source pack. If fewer are supplied, do not invent additional studies.`,
       "Conclude Chapter Two with a clear synthesis of conceptual, theoretical and empirical gaps that justify the study.",
     );
   }
 
   if (chapter === 3) {
     base.push(
-      `Methodology type selected by admin: ${settings.methodologyType}. Use only design, population, sample, instrument, validity, reliability, collection and analysis details that were supplied or can be safely framed as proposed methodology.`,
-      "Where sample size values, formulas, reliability coefficients or software outputs are missing, insert explicit placeholders instead of inventing values.",
+      `Methodology type selected by admin: ${settings.methodologyType}. Use only design, population, sample, instrument, validity, reliability, collection and analysis details supplied or safely framed as proposed methodology.`,
+      "Where sample values, formulas, reliability coefficients or software outputs are missing, insert explicit placeholders instead of inventing values.",
     );
   }
 
   if (chapter === 4) {
     base.push(
-      "Use ONLY verified findings/data supplied by the administrator. Never generate respondents, percentages, means, standard deviations, regression coefficients, p-values, interview quotations, themes or tables from imagination.",
-      "Present analysis according to the approved research questions/hypotheses and distinguish quantitative, qualitative and mixed-method evidence according to the selected research approach.",
+      "Use ONLY verified findings/data supplied by the administrator. Never invent respondents, percentages, means, standard deviations, regression coefficients, p-values, interview quotations, themes or tables.",
+      "Present data first, then interpret each table/result, then answer each approved research question, then test supplied hypotheses where supported, then discuss each major finding against verified literature and theory.",
       input.findingsData
-        ? "Build tables/interpretations only from the supplied verified values and explain each result before discussing it against verified literature."
-        : "No verified findings/data were supplied. Create only a complete Chapter Four framework with [Insert verified result/data] placeholders and analysis instructions.",
+        ? "Use the supplied verified values exactly. When tabular values are supplied, render them as Markdown tables with a table number/title, followed by a clear prose interpretation."
+        : "No verified findings/data were supplied. Create only a complete Chapter Four framework with [Insert verified result/data] placeholders.",
     );
   }
 
   if (chapter === 5) {
     base.push(
-      "Tie summary, conclusions and recommendations directly to the approved objectives and verified findings.",
+      "Tie summary, conclusions and recommendations directly to approved objectives and verified findings.",
       "Do not introduce new findings in Chapter Five.",
       input.findingsData
-        ? "State contributions and recommendations only to the extent supported by the verified results."
-        : "Because verified findings are missing, produce a Chapter Five framework and use [Insert verified finding] wherever a conclusion or recommendation depends on results.",
+        ? "State contributions and recommendations only to the extent supported by verified results."
+        : "Because verified findings are missing, produce a Chapter Five framework with [Insert verified finding] placeholders.",
     );
   }
 
   return base.join("\n");
+}
+
+function chapterFourContext(input: NounThesisInput, settings: NounExpertSettings, includeLiterature: boolean) {
+  return [
+    "Institution: National Open University of Nigeria (NOUN)",
+    `Research title: ${input.title}`,
+    `Research approach: ${settings.methodologyType}`,
+    input.objectives ? `Approved objectives:\n${input.objectives}` : "",
+    input.researchQuestions ? `Approved research questions/hypotheses:\n${input.researchQuestions}` : "",
+    input.methodology ? `Approved methodology/analysis method:\n${input.methodology}` : "",
+    input.findingsData ? `VERIFIED DATA/RESULTS — reproduce values exactly:\n${input.findingsData}` : "No verified findings/data supplied.",
+    includeLiterature && input.verifiedSources ? `VERIFIED literature/reference pack for discussion:\n${input.verifiedSources}` : "",
+    settings.existingWork ? `Existing Chapter Four draft to improve:\n${settings.existingWork}` : "",
+    settings.supervisorCorrections ? `Mandatory supervisor corrections:\n${settings.supervisorCorrections}` : "",
+    input.facultyInstructions ? `Faculty/supervisor instructions:\n${input.facultyInstructions}` : "",
+  ].filter(Boolean).join("\n\n");
+}
+
+function stripChapterFourWrapper(text: string) {
+  return text
+    .replace(/^#\s*CHAPTER\s+FOUR\s*$/gim, "")
+    .replace(/^#\s*DATA PRESENTATION[^\n]*$/gim, "")
+    .trim();
+}
+
+function numericTokens(value: string) {
+  return new Set(
+    (value.match(/\b\d+(?:,\d{3})*(?:\.\d+)?%?\b/g) || [])
+      .map(token => token.replace(/,/g, ""))
+      .filter(token => !/^(?:[1-8]|4\.[1-8])$/.test(token)),
+  );
+}
+
+function assertChapterFourNumericIntegrity(input: NounThesisInput, output: string) {
+  if (!input.findingsData.trim()) return;
+  const allowed = numericTokens([
+    input.findingsData,
+    input.methodology,
+    input.researchQuestions,
+    input.verifiedSources,
+  ].join("\n"));
+  const produced = numericTokens(output);
+  const unexpected = [...produced].filter(token => !allowed.has(token));
+  if (unexpected.length) {
+    throw new NounThesisError(
+      `Chapter Four safety check stopped the draft because new numeric value(s) appeared that were not in the supplied data/source pack: ${unexpected.slice(0, 8).join(", ")}. Verify the data and regenerate.`,
+      422,
+    );
+  }
+}
+
+async function generateExpertChapterFour(options: {
+  input: NounThesisInput;
+  settings: NounExpertSettings;
+  targetPages: number;
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+}) {
+  if (!options.input.findingsData.trim()) {
+    return callAi({
+      ...options,
+      label: "Chapter 4: Data Presentation, Analysis and Discussion of Findings",
+      instructions: chapterExpertInstructions(options.input, options.settings, 4),
+    });
+  }
+
+  const total = Math.max(12, Math.min(40, options.targetPages));
+  const presentationPages = Math.max(3, Math.round(total * 0.25));
+  const analysisPages = Math.max(4, Math.round(total * 0.30));
+  const hypothesisPages = Math.max(2, Math.round(total * 0.15));
+  const discussionPages = Math.max(4, total - presentationPages - analysisPages - hypothesisPages);
+
+  const dataContext = chapterFourContext(options.input, options.settings, false);
+  const discussionContext = chapterFourContext(options.input, options.settings, true);
+
+  const [presentation, analysis, hypotheses, discussion] = await Promise.all([
+    callAi({
+      ...options,
+      label: "Chapter Four Part A — Data Presentation",
+      targetPages: presentationPages,
+      contextOverride: dataContext,
+      instructions: [
+        "Write ONLY sections ## 4.1 Introduction, ## 4.2 Data Presentation and Response Rate (where applicable), and ## 4.3 Demographic Data Presentation and Analysis (where applicable).",
+        "Reproduce supplied values exactly. Use Markdown tables for supplied tabular data. Give every table a clear number/title, then interpret what the table shows without adding new values.",
+        "If response-rate or demographic values were not supplied, omit that subsection or insert [Insert verified result/data]; never invent it.",
+      ].join("\n"),
+    }),
+    callAi({
+      ...options,
+      label: "Chapter Four Part B — Research Question Data Analysis",
+      targetPages: analysisPages,
+      contextOverride: dataContext,
+      instructions: [
+        "Write ONLY ## 4.4 Data Analysis and Answers to Research Questions and, where applicable, ## 4.5 Qualitative/Thematic Analysis.",
+        "Organise analysis one research question/objective at a time. For each: present the relevant supplied table/output, interpret it, and state the evidence-grounded answer.",
+        "For qualitative data, use only themes and quotations actually supplied. Do not create participant quotations or frequencies.",
+      ].join("\n"),
+    }),
+    callAi({
+      ...options,
+      label: "Chapter Four Part C — Hypothesis Testing",
+      targetPages: hypothesisPages,
+      contextOverride: dataContext,
+      instructions: [
+        "Write ONLY ## 4.6 Test of Hypotheses.",
+        "Test and interpret only hypotheses for which verified statistical output is supplied. Reproduce test statistic, coefficient, p-value, significance level and decision exactly as supplied.",
+        "Do not calculate a missing statistic. If a required output is absent, insert [Insert verified result/data].",
+      ].join("\n"),
+    }),
+    callAi({
+      ...options,
+      label: "Chapter Four Part D — Discussion of Findings",
+      targetPages: discussionPages,
+      contextOverride: discussionContext,
+      instructions: [
+        "Write ONLY ## 4.7 Discussion of Findings and ## 4.8 Summary of Major Findings.",
+        "Discuss findings objective by objective. Start with the verified study finding, explain its meaning, then compare it with prior studies and theory ONLY when those sources are present in the verified literature pack.",
+        "State agreements, differences and plausible evidence-grounded implications without inventing explanations. Use [Add verified citation] where comparison evidence is missing.",
+        "End with a concise numbered or prose summary of the major verified findings; do not introduce new results.",
+      ].join("\n"),
+    }),
+  ]);
+
+  const combined = [
+    "# CHAPTER FOUR",
+    `# ${chapterTitle(4)}`,
+    stripChapterFourWrapper(presentation),
+    stripChapterFourWrapper(analysis),
+    stripChapterFourWrapper(hypotheses),
+    stripChapterFourWrapper(discussion),
+  ].filter(Boolean).join("\n\n");
+
+  assertChapterFourNumericIntegrity(options.input, combined);
+  return combined;
 }
 
 function countMatches(value: string, pattern: RegExp) {
@@ -305,9 +442,7 @@ function buildQualityAudit(input: NounThesisInput, generated: NounGeneratedThesi
   const citationInstances = countMatches(chapterText, /\([^()]*\b(?:19|20)\d{2}[a-z]?\b[^()]*\)/g);
   const citationPlaceholders = countMatches(chapterText, /\[Add verified(?: original-proponent)? citation\]/gi);
   const resultPlaceholders = countMatches(chapterText, /\[Insert verified (?:result\/data|finding|major findings)\]/gi);
-  const conceptOfHeadings = chapterText
-    .split("\n")
-    .filter(line => /^#{1,3}\s+/.test(line) && /concept of/i.test(line));
+  const conceptOfHeadings = chapterText.split("\n").filter(line => /^#{1,3}\s+/.test(line) && /concept of/i.test(line));
 
   const referenceStatus = referenceLines.length >= settings.minimumReferences
     ? "PASS"
@@ -335,6 +470,7 @@ function buildQualityAudit(input: NounThesisInput, generated: NounGeneratedThesi
     `- Chapter Two 'Concept of' heading violations detected: ${conceptOfHeadings.length}`,
     `- Theoretical-framework target: exactly ${settings.theoryCount} theories; confirm original-proponent sources are present in the verified source pack.`,
     `- Empirical-review target: up to ${settings.empiricalStudyTarget} verified studies; the writer is prohibited from inventing studies to reach the target.`,
+    "- Chapter Four staged workflow: data presentation → research-question analysis → hypothesis testing → discussion of findings.",
     "",
     "## Supervisor Review Checklist",
     "- Confirm every in-text citation has a matching verified reference entry and every listed reference is actually cited where relevant.",
@@ -373,7 +509,7 @@ async function buildDefensePack(options: {
     contextOverride: context,
     instructions: [
       "Create a concise defense preparation pack for the student.",
-      "Include: a 2-minute opening presentation; problem statement in plain scholarly language; objectives; methodology defense; verified key findings only if supplied; contribution/significance; limitations; recommendations; and 20 likely examiner questions with evidence-grounded answer cues.",
+      "Include: a 2-minute opening presentation; problem statement; objectives; methodology defense; verified key findings only if supplied; contribution/significance; limitations; recommendations; and 20 likely examiner questions with evidence-grounded answer cues.",
       "Where a question depends on results not supplied, say [Review verified result before defense] rather than inventing an answer.",
       "Also include five difficult methodology questions and five questions about the research gap/theory.",
     ].join("\n"),
@@ -389,16 +525,22 @@ export async function generateExpertNounThesis(input: NounThesisInput, settings:
   }
 
   const chapters = selectedChapters(input.mode);
-  const chapterJobs = chapters.map(chapter => callAi({
-    input,
-    settings,
-    label: `Chapter ${chapter}: ${chapterTitle(chapter)}`,
-    targetPages: chapterPageTarget(input, chapter),
-    apiKey,
-    baseUrl,
-    model,
-    instructions: chapterExpertInstructions(input, settings, chapter),
-  }));
+  const chapterJobs = chapters.map(chapter => {
+    const targetPages = chapterPageTarget(input, chapter);
+    if (chapter === 4) {
+      return generateExpertChapterFour({ input, settings, targetPages, apiKey, baseUrl, model });
+    }
+    return callAi({
+      input,
+      settings,
+      label: `Chapter ${chapter}: ${chapterTitle(chapter)}`,
+      targetPages,
+      apiKey,
+      baseUrl,
+      model,
+      instructions: chapterExpertInstructions(input, settings, chapter),
+    });
+  });
 
   const abstractJob = input.mode === "full"
     ? callAi({
