@@ -1,21 +1,13 @@
 import { NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Order, OrderFile } from "@/lib/models";
+import { attachmentContentDisposition, safeOriginalAttachmentFilename } from "@/lib/download-filename";
 
 export const runtime = "nodejs";
 
 type RouteContext = {
   params: Promise<{ orderNumber: string }>;
 };
-
-function asciiFilename(value: string) {
-  return value
-    .normalize("NFKD")
-    .replace(/[^a-zA-Z0-9._-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^[-.]+|[-.]+$/g, "")
-    .slice(0, 140) || "submitted-file";
-}
 
 export async function GET(_request: Request, context: RouteContext) {
   try {
@@ -37,12 +29,12 @@ export async function GET(_request: Request, context: RouteContext) {
       );
     }
 
-    const filename = asciiFilename(file.fileName || `${orderNumber}-submitted-file`);
+    const filename = safeOriginalAttachmentFilename(file.fileName || `${orderNumber}-submitted-file`);
     return new Response(new Uint8Array(file.data), {
       status: 200,
       headers: {
         "Content-Type": file.mimeType || "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": attachmentContentDisposition(filename),
         "Content-Length": String(file.data.length),
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
