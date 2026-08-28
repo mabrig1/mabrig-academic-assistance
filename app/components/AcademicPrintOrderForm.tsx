@@ -2,9 +2,14 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+const MAX_PAGES = 100;
+const MAX_FILE_BYTES = 4_000_000;
+const MAX_PASTED_CHARS = 500_000;
+
 const services = [
   "Academic Document Printing",
   "Assignment & Term-Paper Support",
+  "UNN Undergraduate Project Formatting",
   "Project & Thesis Formatting",
   "Research Assistance",
   "Data Analysis Assistance",
@@ -38,6 +43,12 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
     setSubmitting(true);
     setMessage("Submitting and preparing your document for conversion...");
     const form = new FormData(formElement);
+    const uploadedFile = form.get("file");
+    if (uploadedFile instanceof File && uploadedFile.size > MAX_FILE_BYTES) {
+      setSubmitting(false);
+      setMessage("Upload must be 4MB or smaller. Compress the file, split large attachments, or paste the text instead.");
+      return;
+    }
     const submittedWhatsapp = String(form.get("whatsapp") || "").trim();
     const response = await fetch("/api/orders/v2", { method: "POST", body: form });
     const data = await response.json();
@@ -65,7 +76,7 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
 
   return <div className={compact ? "" : "card"}>
     {!compact && <>
-      <span className="badge">Maximum 20 pages</span>
+      <span className="badge">Up to 100 pages • 4MB maximum upload</span>
       <h2>Academic Document Printing & Word Conversion</h2>
       <p>Upload your work or paste it directly. We can clean the text, apply academic formatting, generate a Word document and prepare it for printing.</p>
     </>}
@@ -92,14 +103,14 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
           </select>
         </label>
 
-        <label className="field"><span>Number of pages (max 20)</span><input name="pages" type="number" min="1" max="20" value={pages} onChange={e => setPages(Math.min(20, Math.max(1, Number(e.target.value) || 1)))} required /></label>
+        <label className="field"><span>Number of pages (max {MAX_PAGES})</span><input name="pages" type="number" min="1" max={MAX_PAGES} value={pages} onChange={e => setPages(Math.min(MAX_PAGES, Math.max(1, Number(e.target.value) || 1)))} required /></label>
         <label className="field"><span>Copies</span><input name="copies" type="number" min="1" max="100" defaultValue="1" /></label>
 
         <label className="field"><span>Spacing</span>
           <select name="spacing" defaultValue="1.5"><option value="1.0">1.0 — Single</option><option value="1.5">1.5 lines</option><option value="2.0">2.0 — Double</option></select>
         </label>
         <label className="field"><span>Document format</span>
-          <select name="formatPreset" defaultValue="unn"><option value="unn">UNN format — default</option><option value="custom">Custom academic format</option></select>
+          <select name="formatPreset" defaultValue="unn"><option value="unn">UNN Undergraduate Project format — default</option><option value="custom">Custom academic format</option></select>
         </label>
         <label className="field"><span>Font</span>
           <select name="font" defaultValue="Times New Roman"><option>Times New Roman</option><option>Arial</option><option>Calibri</option><option>Georgia</option></select>
@@ -171,11 +182,11 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         </>}
 
         <label className="field full"><span>{transformationMode === "write-assignment" ? "Optional source material (max 4MB)" : "Option 1 — Upload for conversion (max 4MB)"}</span><input name="file" type="file" accept=".txt,.md,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" /></label>
-        <div className="conversion-upload-note field full">⚡ Instant text extraction for Word generation is available for pasted text, TXT/Markdown, DOCX and text-based PDFs. Complex layouts, scanned PDFs, PowerPoint and Excel may require manual printer review.</div>
+        <div className="conversion-upload-note field full">⚡ Uploads are limited to 4MB. Instant text extraction for Word generation is available for pasted text, TXT/Markdown, DOCX and text-based PDFs. Complex layouts, scanned PDFs, PowerPoint and Excel may require manual printer review.</div>
 
         <div className="upload-divider field full"><span>OR</span></div>
 
-        <label className="field full"><span>{transformationMode === "write-assignment" ? "Optional notes, outline or verified source material" : "Option 2 — Paste your assignment here"}</span><textarea name="pastedContent" rows={12} maxLength={100000} placeholder={transformationMode === "write-assignment" ? "Paste an outline, lecturer's guide, notes or verified sources. The AI will not invent citations or references." : "Paste the full assignment or document text to format, proofread or rewrite."} /></label>
+        <label className="field full"><span>{transformationMode === "write-assignment" ? "Optional notes, outline or verified source material" : "Option 2 — Paste your assignment here"}</span><textarea name="pastedContent" rows={12} maxLength={MAX_PASTED_CHARS} placeholder={transformationMode === "write-assignment" ? "Paste an outline, lecturer's guide, notes or verified sources. The AI will not invent citations or references." : "Paste the full assignment or document text to format, proofread or rewrite."} /></label>
 
         <div className="field full check-row">
           <input type="hidden" name="boldHeadings" value="off" />
@@ -199,7 +210,7 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         <input type="hidden" name="referralCode" value={referralCode} />
       </div>
 
-      <div className="notice" style={{marginTop:16}}><strong>UNN format is the default:</strong> Times New Roman 12pt, 1.5 spacing, justified body paragraphs with 0.5-inch first-line indents, bold headings/subheadings and hanging reference entries. You can select 1.0, 1.5 or 2.0 spacing.</div>
+      <div className="notice" style={{marginTop:16}}><strong>UNN Undergraduate Project format:</strong> Times New Roman 12pt, 1.5 spacing by default, justified body paragraphs, academic heading hierarchy and hanging reference entries. Department or supervisor instructions can still be selected or added under custom instructions.</div>
       <div className="notice" style={{marginTop:10}}>Academic integrity: AI assignment drafts must be reviewed, fact-checked and adapted by the student. The writer will use supplied evidence and placeholders rather than invent citations or references.</div>
       <button className="btn primary" style={{marginTop:16}} type="submit" disabled={submitting}>{submitting ? "Preparing conversion..." : "Submit, Format & Convert to Word"}</button>
       {message && <p className="form-message" aria-live="polite">{message}</p>}
