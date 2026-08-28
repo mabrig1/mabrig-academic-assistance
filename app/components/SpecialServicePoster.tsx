@@ -5,11 +5,11 @@ import { useState } from "react";
 const SITE_URL = "https://academic.mabrigkorie.org/academic-printing";
 const ORDER_URL = "/academic-printing/order";
 const WHATSAPP_NUMBER = "2347065342818";
-const SHARE_TEXT = "🎓 Deadline close? Upload or paste up to 20 pages to Mabrig Academic Assistance for formatting, printing, binding and campus delivery.";
+const SHARE_TEXT = "🎓 Deadline close? Upload or paste up to 100 pages to Mabrig Academic Assistance for UNN project formatting, printing, binding and campus delivery.";
 
 const shareUrl = encodeURIComponent(SITE_URL);
 const shareText = encodeURIComponent(SHARE_TEXT);
-const contactText = encodeURIComponent("Hello Mabrig Academic Assistance. I want to use the 20-page Academic Document Formatting & Printing service.");
+const contactText = encodeURIComponent("Hello Mabrig Academic Assistance. I want to use the up-to-100-page Academic Document Formatting & Printing service.");
 
 export default function SpecialServicePoster() {
   const [shareMessage, setShareMessage] = useState("");
@@ -31,16 +31,16 @@ export default function SpecialServicePoster() {
             <span className="poster-kicker">🔥 SPECIAL STUDENT SERVICE • UNN</span>
             <h2 id="special-service-title">Deadline Close? Don’t Let Formatting & Printing Delay Your Submission.</h2>
             <p className="poster-lead">
-              Upload your academic work <strong>or paste it directly</strong> — up to <strong>20 pages</strong> — and send it straight into our print-shop workflow. We review the requirements, format where needed, convert, print, bind and arrange campus delivery.
+              Upload your academic work <strong>or paste it directly</strong> — up to <strong>100 pages</strong> with a <strong>4MB maximum file upload</strong> — and send it straight into our print-shop workflow. We review the requirements, format where needed, convert, print, bind and arrange campus delivery.
             </p>
             <p className="poster-punch">Your work is written. Let us make it submission-ready.</p>
 
             <div className="poster-features" aria-label="Service features">
               <span>Upload or Paste</span>
+              <span>UNN Undergraduate Project Format</span>
               <span>Times New Roman • 12pt</span>
-              <span>1.0 / 1.5 / 2.0 spacing</span>
+              <span>UNN • 2.0 Double Spacing</span>
               <span>Citations & References</span>
-              <span>Cover Page</span>
               <span>Binding & Campus Delivery</span>
             </div>
 
@@ -58,7 +58,7 @@ export default function SpecialServicePoster() {
           </div>
 
           <aside className="poster-offer" aria-label="Printing prices and sharing">
-            <div className="poster-limit">MAXIMUM <strong>20 PAGES</strong> PER SUBMISSION</div>
+            <div className="poster-limit">UP TO <strong>100 PAGES</strong> • <strong>4MB MAX FILE</strong></div>
             <div className="poster-price-card">
               <span>BLACK & WHITE</span>
               <strong>₦30</strong>

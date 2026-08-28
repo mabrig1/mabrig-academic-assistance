@@ -50,7 +50,7 @@ export default function AdminConverterPage() {
               <label className="field">
                 <span>Document format</span>
                 <select name="formatPreset" defaultValue="unn">
-                  <option value="unn">UNN format — default</option>
+                  <option value="unn">UNN Undergraduate Project — 2.0 double spacing</option>
                   <option value="custom">Custom academic format</option>
                 </select>
               </label>
@@ -60,14 +60,14 @@ export default function AdminConverterPage() {
               </label>
               <label className="field">
                 <span>Line spacing</span>
-                <select name="spacing" defaultValue="1.5">
-                  <option value="1.0">1.0 — Single</option>
-                  <option value="1.5">1.5 lines</option>
-                  <option value="2.0">2.0 — Double</option>
+                <select name="spacing" defaultValue="2.0">
+                  <option value="1.0">1.0 — Single (custom only)</option>
+                  <option value="1.5">1.5 lines (custom only)</option>
+                  <option value="2.0">2.0 — Double (UNN preset)</option>
                 </select>
               </label>
               <label className="field">
-                <span>Target assignment pages</span>
+                <span>AI draft target pages (max 20)</span>
                 <input name="targetPages" type="number" min="1" max="20" defaultValue="3" />
               </label>
               <label className="field">
@@ -149,7 +149,7 @@ export default function AdminConverterPage() {
             </div>
 
             <div className="notice" style={{ marginTop: 16 }}>
-              <strong>Two assignment powers:</strong> Write Assignment creates a structured draft from a topic and brief; Rewrite Assignment transforms a submitted assignment while preserving its facts and citations. UNN format is selected by default with Times New Roman 12pt, 1.5 spacing, first-line body indents, bold headings and hanging references. The writer never invents missing sources.
+              <strong>Two assignment powers:</strong> Write Assignment creates a structured draft from a topic and brief; Rewrite Assignment transforms a submitted assignment while preserving its facts and citations. UNN Undergraduate Project format is selected by default with Times New Roman 12pt, 2.0 double spacing, first-line body indents, bold headings and hanging references. Use Custom academic format when a lecturer or department requires different spacing. Uploaded or pasted documents can be formatted up to the 100-page service limit; AI-created assignment drafts retain the existing 20-page generation limit. The writer never invents missing sources.
             </div>
             <div className="notice" style={{ marginTop: 10 }}>
               <strong>AI connection:</strong> {aiConfigured ? `Configured${aiModel ? ` with ${aiModel}` : ""}.` : "Not fully configured. Add AI_API_KEY, AI_BASE_URL and AI_MODEL in Vercel, then redeploy."}
@@ -165,7 +165,8 @@ export default function AdminConverterPage() {
           <div className="conversion-feature-list">
             <div><strong>Paste → Word</strong><span>WhatsApp or copied text becomes .docx.</span></div>
             <div><strong>DOCX/PDF → clean Word</strong><span>New supported uploads are text-extracted and can be regenerated from their order.</span></div>
-            <div><strong>UNN formatting</strong><span>Times New Roman 12pt, 1.0/1.5/2.0 spacing, body and reference indents.</span></div>
+            <div><strong>UNN formatting</strong><span>Times New Roman 12pt with 2.0 double spacing, justified body text and reference indents.</span></div>
+            <div><strong>Custom formatting</strong><span>Choose 1.0, 1.5 or 2.0 spacing when a different specification is required.</span></div>
             <div><strong>Write Assignment</strong><span>Turn a topic and lecturer's brief into a structured academic draft.</span></div>
             <div><strong>Rewrite Assignment</strong><span>Rework a complete assignment while preserving facts, citations and meaning.</span></div>
             <div><strong>Printer control</strong><span>The Word file is generated inside the protected admin system.</span></div>
