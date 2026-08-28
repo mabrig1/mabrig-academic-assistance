@@ -8,8 +8,12 @@ import {
   PageOrientation,
   Packer,
   Paragraph,
+  Table,
+  TableCell,
   TableOfContents,
+  TableRow,
   TextRun,
+  WidthType,
 } from "docx";
 import type { NounGeneratedThesis, NounThesisInput } from "./noun-thesis";
 
@@ -80,8 +84,43 @@ function cleanMarkdownText(value: string) {
     .trim();
 }
 
+function parseMarkdownTableRow(line: string) {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map(cell => cleanMarkdownText(cell.trim()));
+}
+
+function isMarkdownTableSeparator(line: string) {
+  if (!line.includes("|")) return false;
+  const cells = parseMarkdownTableRow(line);
+  return cells.length > 0 && cells.every(cell => /^:?-{3,}:?$/.test(cell));
+}
+
+function wordTable(headers: string[], rows: string[][]) {
+  const width = Math.max(headers.length, ...rows.map(row => row.length), 1);
+  const normalize = (row: string[]) => Array.from({ length: width }, (_, index) => row[index] || "");
+  const makeCell = (text: string, bold = false) => new TableCell({
+    children: [new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { line: SINGLE_SPACING, after: 60 },
+      children: [run(text, { bold, size: 22 })],
+    })],
+  });
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({ children: normalize(headers).map(text => makeCell(text, true)) }),
+      ...rows.map(row => new TableRow({ children: normalize(row).map(text => makeCell(text)) })),
+    ],
+  });
+}
+
 function markdownParagraphs(text: string) {
-  const children: Paragraph[] = [];
+  const children: Array<Paragraph | Table> = [];
   const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   let paragraphLines: string[] = [];
 
@@ -91,10 +130,29 @@ function markdownParagraphs(text: string) {
     paragraphLines = [];
   };
 
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim();
     if (!line) {
       flush();
+      continue;
+    }
+
+    const nextLine = lines[index + 1]?.trim() || "";
+    if (line.includes("|") && isMarkdownTableSeparator(nextLine)) {
+      flush();
+      const headers = parseMarkdownTableRow(line);
+      const rows: string[][] = [];
+      index += 2;
+      while (index < lines.length) {
+        const rowLine = lines[index].trim();
+        if (!rowLine || !rowLine.includes("|")) {
+          index -= 1;
+          break;
+        }
+        rows.push(parseMarkdownTableRow(rowLine));
+        index += 1;
+      }
+      children.push(wordTable(headers, rows));
       continue;
     }
 
