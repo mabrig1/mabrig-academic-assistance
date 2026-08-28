@@ -16,6 +16,7 @@ import {
   parseParagraphIndentation,
   parseReferenceStyle,
 } from "@/lib/document-format-options";
+import { attachmentContentDisposition, safeAttachmentFilename } from "@/lib/download-filename";
 
 export const runtime = "nodejs";
 
@@ -53,10 +54,6 @@ type OrderDoc = {
   removeEmptyParagraphs?: boolean;
   widowOrphanControl?: boolean;
 };
-
-function safeFilename(value: string) {
-  return value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-").slice(0, 100);
-}
 
 export async function GET(request: Request, context: RouteContext) {
   try {
@@ -130,12 +127,16 @@ export async function GET(request: Request, context: RouteContext) {
     });
 
     const outputLabel = transformationMode === "format" ? "formatted" : transformationMode;
-    const filename = safeFilename(`${title}-${user?.name || "student"}-${order.orderNumber || orderNumber}-${outputLabel}.docx`);
+    const filename = safeAttachmentFilename(
+      `${title}-${user?.name || "student"}-${order.orderNumber || orderNumber}-${outputLabel}`,
+      { extension: ".docx", fallback: "formatted-academic-document" },
+    );
     return new Response(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": attachmentContentDisposition(filename),
+        "Content-Length": String(buffer.length),
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
         "X-Text-Transformation": transformationMode,

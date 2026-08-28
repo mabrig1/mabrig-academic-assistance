@@ -15,14 +15,11 @@ import {
   parseReferenceStyle,
 } from "@/lib/document-format-options";
 import { buildAcademicWordDocument } from "@/lib/word-document";
+import { attachmentContentDisposition, safeAttachmentFilename } from "@/lib/download-filename";
 
 export const runtime = "nodejs";
 
 const MAX_CHARS = 120_000;
-
-function safeFilename(value: string) {
-  return value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-").slice(0, 100);
-}
 
 export async function POST(request: Request) {
   try {
@@ -88,11 +85,15 @@ export async function POST(request: Request) {
       widowOrphanControl,
     });
 
-    const filename = safeFilename(`${title || "academic-document"}.docx`);
+    const filename = safeAttachmentFilename(title || "academic-document", {
+      extension: ".docx",
+      fallback: "academic-document",
+    });
     return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": attachmentContentDisposition(filename),
+        "Content-Length": String(buffer.length),
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
         "X-Text-Transformation": transformationMode,
