@@ -44,7 +44,7 @@ function splitSourceBlocks(value: string) {
   const lines = normalized.split("\n").map(item => item.trim()).filter(Boolean);
   const blocks: string[] = [];
   for (const line of lines) {
-    if (/^(?:https?:\/\/|doi\s*[:/]|10\.\d{4,9}\//i.test(line) && blocks.length) {
+    if (/^(?:https?:\/\/|doi\s*[:/]|10\.\d{4,9}\/)/i.test(line) && blocks.length) {
       blocks[blocks.length - 1] = `${blocks[blocks.length - 1]} ${line}`;
     } else {
       blocks.push(line);
