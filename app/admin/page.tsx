@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { connectMongoDB } from "@/lib/mongodb";
-import { Delivery, Order, OrderFile, Payment, Service, User } from "@/lib/models";
+import { Delivery, Order, OrderFile, OrderMessage, Payment, Service, User } from "@/lib/models";
 import { formToggleEnabled, parseReferenceStyle } from "@/lib/document-format-options";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +78,7 @@ type ServiceRow = { _id?: unknown; name?: string } | null;
 type PaymentRow = { orderId?: unknown; status?: string; amount?: number; reference?: string; paidAt?: Date | string } | null;
 type FileRow = { orderId?: unknown; fileName?: string; storageKey?: string; mimeType?: string; sizeBytes?: number } | null;
 type DeliveryRow = { orderId?: unknown; status?: string; location?: string; addressNote?: string } | null;
+type OrderMessageRow = { _id?: unknown; orderId?: unknown; sender?: string; body?: string; createdAt?: Date | string; notificationStatus?: { whatsapp?: string; telegram?: string } };
 
 function formatMoney(value?: number | null) {
   return `₦${Number(value || 0).toLocaleString()}`;
@@ -151,18 +152,24 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const countByStatus = new Map(WORKFLOW_STATUSES.map((status, index) => [status, counts[index]]));
 
   const orderIds = orders.map(order => order._id);
-  const [userResults, serviceResults, paymentResults, fileResults, deliveryResults] = await Promise.all([
+  const [userResults, serviceResults, paymentResults, fileResults, deliveryResults, messageResults] = await Promise.all([
     User.find({ _id: { $in: orders.map(order => order.userId).filter(Boolean) } }).lean().exec(),
     Service.find({ _id: { $in: orders.map(order => order.serviceId).filter(Boolean) } }).lean().exec(),
     Payment.find({ orderId: { $in: orderIds } }).lean().exec(),
     OrderFile.find({ orderId: { $in: orderIds } }).lean().exec(),
     Delivery.find({ orderId: { $in: orderIds } }).lean().exec(),
+    OrderMessage.find({ orderId: { $in: orderIds }, sender: "CLIENT" }).sort({ createdAt: -1 }).lean().exec(),
   ]);
   const usersById = new Map((userResults as unknown as Exclude<UserRow, null>[]).map(item => [String(item._id), item]));
   const servicesById = new Map((serviceResults as unknown as Exclude<ServiceRow, null>[]).map(item => [String(item._id), item]));
   const paymentsByOrder = new Map((paymentResults as unknown as Exclude<PaymentRow, null>[]).map(item => [String(item.orderId), item]));
   const filesByOrder = new Map((fileResults as unknown as Exclude<FileRow, null>[]).map(item => [String(item.orderId), item]));
   const deliveriesByOrder = new Map((deliveryResults as unknown as Exclude<DeliveryRow, null>[]).map(item => [String(item.orderId), item]));
+  const messagesByOrder = new Map<string, OrderMessageRow[]>();
+  for (const message of messageResults as unknown as OrderMessageRow[]) {
+    const key = String(message.orderId);
+    messagesByOrder.set(key, [...(messagesByOrder.get(key) || []), message]);
+  }
 
   const enriched = orders.map(order => ({
     ...order,
@@ -171,6 +178,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     payment: paymentsByOrder.get(String(order._id)) || null,
     file: filesByOrder.get(String(order._id)) || null,
     delivery: deliveriesByOrder.get(String(order._id)) || null,
+    clientMessages: messagesByOrder.get(String(order._id)) || [],
   }));
 
   const visibleOrders = enriched.filter(order => {
@@ -356,6 +364,14 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   </> : <p>No file uploaded.</p>}
                 </div>
               </div>
+
+              {order.clientMessages.length > 0 && <section className="admin-client-messages">
+                <h4>New client instructions ({order.clientMessages.length})</h4>
+                {order.clientMessages.slice(0, 10).map(message => <div className="admin-client-message" key={String(message._id)}>
+                  <small>{message.createdAt ? new Date(message.createdAt).toLocaleString("en-NG") : "Recently received"} • WhatsApp: {label(message.notificationStatus?.whatsapp || "not_configured")} • Telegram: {label(message.notificationStatus?.telegram || "not_configured")}</small>
+                  <p>{message.body}</p>
+                </div>)}
+              </section>}
 
               {content && (
                 <details className="pasted-document">

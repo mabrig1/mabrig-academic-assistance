@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./conversion.css";
+import ClientOrderAssistant from "./components/ClientOrderAssistant";
 
 export const metadata: Metadata = {
   title: "Mabrig Academic Assistance",
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>{children}<ClientOrderAssistant /></body>
     </html>
   );
 }

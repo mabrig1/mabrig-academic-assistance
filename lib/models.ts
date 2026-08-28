@@ -64,6 +64,17 @@ const orderSchema = new Schema({
     whatsapp: { type: String, enum: ["pending", "sent", "failed", "not_configured"], default: "not_configured" },
     telegram: { type: String, enum: ["pending", "sent", "failed", "not_configured"], default: "not_configured" },
   },
+  lastClientMessageAt: { type: Date, default: null },
+}, { timestamps: true });
+
+const orderMessageSchema = new Schema({
+  orderId: { type: Schema.Types.ObjectId, ref: "MabrigOrder", required: true, index: true },
+  sender: { type: String, enum: ["CLIENT", "ADMIN"], default: "CLIENT" },
+  body: { type: String, required: true, maxlength: 2000 },
+  notificationStatus: {
+    whatsapp: { type: String, enum: ["pending", "sent", "failed", "not_configured"], default: "not_configured" },
+    telegram: { type: String, enum: ["pending", "sent", "failed", "not_configured"], default: "not_configured" },
+  },
 }, { timestamps: true });
 
 const orderFileSchema = new Schema({
@@ -96,9 +107,10 @@ const deliverySchema = new Schema({
 export const User = models.MabrigUser || model("MabrigUser", userSchema);
 export const Service = models.MabrigService || model("MabrigService", serviceSchema);
 export const Order = models.MabrigOrder || model("MabrigOrder", orderSchema);
+export const OrderMessage = models.MabrigOrderMessage || model("MabrigOrderMessage", orderMessageSchema);
 export const OrderFile = models.MabrigOrderFile || model("MabrigOrderFile", orderFileSchema);
 export const Payment = models.MabrigPayment || model("MabrigPayment", paymentSchema);
 export const Delivery = models.MabrigDelivery || model("MabrigDelivery", deliverySchema);
 
-export type MabrigModels = { User: typeof User; Service: typeof Service; Order: typeof Order; OrderFile: typeof OrderFile; Payment: typeof Payment; Delivery: typeof Delivery };
+export type MabrigModels = { User: typeof User; Service: typeof Service; Order: typeof Order; OrderMessage: typeof OrderMessage; OrderFile: typeof OrderFile; Payment: typeof Payment; Delivery: typeof Delivery };
 void mongoose;

@@ -34,9 +34,11 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const formElement = e.currentTarget;
     setSubmitting(true);
     setMessage("Submitting and preparing your document for conversion...");
-    const form = new FormData(e.currentTarget);
+    const form = new FormData(formElement);
+    const submittedWhatsapp = String(form.get("whatsapp") || "").trim();
     const response = await fetch("/api/orders/v2", { method: "POST", body: form });
     const data = await response.json();
     setSubmitting(false);
@@ -52,7 +54,10 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         ? ` ${data.conversionWarning}`
         : "";
     setMessage(`Order ${data.orderId} created. Quotation: ₦${Number(data.quotedAmount).toLocaleString()}.${conversionMessage} We will continue with you on WhatsApp.`);
-    e.currentTarget.reset();
+    const submittedOrder = { orderNumber: String(data.orderId), whatsapp: submittedWhatsapp };
+    window.localStorage.setItem("mabrig_latest_order", JSON.stringify(submittedOrder));
+    window.dispatchEvent(new CustomEvent("mabrig-order-submitted", { detail: submittedOrder }));
+    formElement.reset();
     setPrintOption("DIGITAL_AND_PRINT");
     setPages(1);
     setTransformationMode("format");
