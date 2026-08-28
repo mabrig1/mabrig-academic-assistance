@@ -20,7 +20,7 @@ import { attachmentContentDisposition, safeAttachmentFilename } from "@/lib/down
 export const runtime = "nodejs";
 
 const MAX_CHARS = 600_000;
-const MAX_PAGES = 100;
+const MAX_AI_DRAFT_PAGES = 20;
 
 export async function POST(request: Request) {
   try {
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const fontSize = Math.min(30, Math.max(8, Number(form.get("fontSize") || 12)));
     const formatPreset = parseFormatPreset(form.get("formatPreset"));
     const spacing = formatPreset === "unn" ? "2.0" : parseDocumentLineSpacing(form.get("spacing"));
-    const targetPages = Math.min(MAX_PAGES, Math.max(1, Number(form.get("targetPages") || 3)));
+    const targetPages = Math.min(MAX_AI_DRAFT_PAGES, Math.max(1, Number(form.get("targetPages") || 3)));
     const coverPage = form.get("coverPage") === "on";
     const references = form.get("references") === "on";
     const transformationMode = parseDocumentTransformationMode(form.get("transformationMode"));
