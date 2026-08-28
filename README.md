@@ -6,6 +6,8 @@ Open-source MVP for Mabrig ICT & Academic Assistance: student ordering, academic
 
 - Student-facing Next.js storefront
 - Order request form with protected, downloadable file retention (uploads up to 4MB)
+- Academic submissions up to 100 pages
+- UNN Undergraduate Project formatting preset with Times New Roman 12pt, 1.5 spacing, justified body text, academic headings and hanging reference entries
 - Order IDs
 - Service catalogue
 - Responsive mobile/desktop UI
