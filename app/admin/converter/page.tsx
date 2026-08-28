@@ -67,8 +67,8 @@ export default function AdminConverterPage() {
                 </select>
               </label>
               <label className="field">
-                <span>Target assignment/project pages</span>
-                <input name="targetPages" type="number" min="1" max="100" defaultValue="3" />
+                <span>AI draft target pages (max 20)</span>
+                <input name="targetPages" type="number" min="1" max="20" defaultValue="3" />
               </label>
               <label className="field">
                 <span>Text treatment</span>
@@ -149,7 +149,7 @@ export default function AdminConverterPage() {
             </div>
 
             <div className="notice" style={{ marginTop: 16 }}>
-              <strong>Two assignment powers:</strong> Write Assignment creates a structured draft from a topic and brief; Rewrite Assignment transforms a submitted assignment while preserving its facts and citations. UNN Undergraduate Project format is selected by default with Times New Roman 12pt, 2.0 double spacing, first-line body indents, bold headings and hanging references. Use Custom academic format when a lecturer or department requires different spacing. The writer never invents missing sources.
+              <strong>Two assignment powers:</strong> Write Assignment creates a structured draft from a topic and brief; Rewrite Assignment transforms a submitted assignment while preserving its facts and citations. UNN Undergraduate Project format is selected by default with Times New Roman 12pt, 2.0 double spacing, first-line body indents, bold headings and hanging references. Use Custom academic format when a lecturer or department requires different spacing. Uploaded or pasted documents can be formatted up to the 100-page service limit; AI-created assignment drafts retain the existing 20-page generation limit. The writer never invents missing sources.
             </div>
             <div className="notice" style={{ marginTop: 10 }}>
               <strong>AI connection:</strong> {aiConfigured ? `Configured${aiModel ? ` with ${aiModel}` : ""}.` : "Not fully configured. Add AI_API_KEY, AI_BASE_URL and AI_MODEL in Vercel, then redeploy."}
