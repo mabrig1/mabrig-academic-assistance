@@ -8,6 +8,12 @@ import {
   titleWordCount,
   type NounThesisInput,
 } from "@/lib/noun-thesis";
+import {
+  generateExpertNounThesis,
+  type ExpertCitationDensity,
+  type ExpertMethodologyType,
+  type NounExpertSettings,
+} from "@/lib/noun-thesis-expert";
 import { buildNounThesisWordDocument } from "@/lib/noun-thesis-word";
 
 export const runtime = "nodejs";
@@ -17,6 +23,30 @@ const MAX_CONTEXT_CHARS = 120_000;
 
 function field(form: FormData, name: string, max = 20_000) {
   return String(form.get(name) || "").trim().slice(0, max);
+}
+
+function toggle(form: FormData, name: string, fallback = false) {
+  const values = form.getAll(name).map(value => String(value).toLowerCase());
+  if (!values.length) return fallback;
+  return values.some(value => value === "on" || value === "true" || value === "1");
+}
+
+function boundedNumber(value: FormDataEntryValue | null, fallback: number, min: number, max: number) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(numeric)));
+}
+
+function parseMethodologyType(value: FormDataEntryValue | null): ExpertMethodologyType {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "quantitative" || normalized === "qualitative" || normalized === "mixed" || normalized === "secondary") {
+    return normalized;
+  }
+  return "unspecified";
+}
+
+function parseCitationDensity(value: FormDataEntryValue | null): ExpertCitationDensity {
+  return String(value || "").trim().toLowerCase() === "intensive" ? "intensive" : "standard";
 }
 
 export async function POST(request: Request) {
@@ -34,16 +64,18 @@ export async function POST(request: Request) {
     const studyCentre = field(form, "studyCentre", 160);
     const supervisor = field(form, "supervisor", 160);
     const monthYear = field(form, "monthYear", 80);
-    const targetPages = Math.min(100, Math.max(4, Math.round(Number(form.get("targetPages") || 50))));
+    const targetPages = boundedNumber(form.get("targetPages"), 15, 4, 100);
 
     if (!title || !studentName || !matricNumber || !faculty || !department || !programme || !award || !monthYear) {
       return NextResponse.json({ error: "Complete the thesis title, student, matric number, faculty, department, programme, award and completion date." }, { status: 400 });
     }
-    if (titleWordCount(title) > 23) {
-      return NextResponse.json({ error: "NOUN Faculty of Education guidance limits a project/dissertation/thesis title to a maximum of 23 words. Shorten the title or record a faculty-specific exception in the instructions." }, { status: 400 });
+
+    const educationFaculty = /education/i.test(faculty);
+    if (educationFaculty && titleWordCount(title) > 23) {
+      return NextResponse.json({ error: "The configured NOUN Faculty of Education baseline limits the project/dissertation/thesis title to 23 words. Shorten the title or use the faculty/supervisor instructions after confirming an approved exception." }, { status: 400 });
     }
 
-    const input: NounThesisInput = {
+    let input: NounThesisInput = {
       mode,
       degreeLevel,
       targetPages,
@@ -67,13 +99,47 @@ export async function POST(request: Request) {
       dedication: field(form, "dedication", 5_000),
       acknowledgement: field(form, "acknowledgement", 12_000),
       appendices: field(form, "appendices", 60_000),
-      facultyInstructions: field(form, "facultyInstructions", 20_000),
-      automaticTableOfContents: form.get("automaticTableOfContents") === "on",
+      facultyInstructions: field(form, "facultyInstructions", 30_000),
+      automaticTableOfContents: toggle(form, "automaticTableOfContents", true),
     };
 
-    const generated = await generateNounThesis(input);
+    const currentYear = new Date().getFullYear();
+    const startYear = boundedNumber(form.get("referenceYearStart"), Math.max(2015, currentYear - 10), 1900, currentYear);
+    const endYear = boundedNumber(form.get("referenceYearEnd"), currentYear, startYear, currentYear);
+    const expertSettings: NounExpertSettings = {
+      enabled: toggle(form, "expertMode", true),
+      sectionFocus: field(form, "sectionFocus", 300),
+      existingWork: field(form, "existingWork", MAX_CONTEXT_CHARS),
+      supervisorCorrections: field(form, "supervisorCorrections", 40_000),
+      methodologyType: parseMethodologyType(form.get("methodologyType")),
+      citationDensity: parseCitationDensity(form.get("citationDensity")),
+      paragraphTarget: String(form.get("paragraphTarget") || "") === "13-15-lines" ? "13-15-lines" : "balanced",
+      empiricalStudyTarget: boundedNumber(form.get("empiricalStudyTarget"), 15, 13, 20),
+      theoryCount: 3,
+      minimumReferences: boundedNumber(form.get("minimumReferences"), degreeLevel === "masters" || degreeLevel === "phd" ? 50 : 30, 10, 150),
+      referenceYearStart: startYear,
+      referenceYearEnd: endYear,
+      requireDoiOrUrl: toggle(form, "requireDoiOrUrl", true),
+      includeQualityAudit: toggle(form, "includeQualityAudit", true),
+      includeDefensePack: toggle(form, "includeDefensePack", false),
+    };
+
+    const generated = expertSettings.enabled
+      ? await generateExpertNounThesis(input, expertSettings)
+      : await generateNounThesis(input);
+
+    if (expertSettings.enabled) {
+      const expertGenerated = generated as Awaited<ReturnType<typeof generateExpertNounThesis>>;
+      const supplemental = [
+        input.appendices,
+        expertGenerated.qualityAudit ? `EXPERT QUALITY AUDIT\n\n${expertGenerated.qualityAudit}` : "",
+        expertGenerated.defensePack ? `THESIS DEFENSE PREPARATION PACK\n\n${expertGenerated.defensePack}` : "",
+      ].filter(Boolean).join("\n\n");
+      input = { ...input, appendices: supplemental };
+    }
+
     const buffer = await buildNounThesisWordDocument(input, generated);
-    const filename = safeAttachmentFilename(`${studentName}-${mode === "full" ? "NOUN-Thesis" : `NOUN-${mode}`}`, {
+    const filename = safeAttachmentFilename(`${studentName}-${mode === "full" ? "NOUN-Thesis" : `NOUN-${mode}`}${expertSettings.enabled ? "-Expert" : ""}`, {
       extension: ".docx",
       fallback: "NOUN-thesis-draft",
     });
@@ -87,6 +153,7 @@ export async function POST(request: Request) {
         "X-Content-Type-Options": "nosniff",
         "X-NOUN-Writer-Mode": mode,
         "X-NOUN-Degree-Level": degreeLevel,
+        "X-NOUN-Expert-Mode": expertSettings.enabled ? "true" : "false",
         "X-AI-Used": "true",
       },
     });
