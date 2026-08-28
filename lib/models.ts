@@ -35,7 +35,7 @@ const orderSchema = new Schema({
   printOption: { type: String, default: "DIGITAL_ONLY" },
   printType: { type: String, default: "BLACK_WHITE" },
   copies: { type: Number, default: 1 },
-  pages: { type: Number, min: 1, max: 20, default: 1 },
+  pages: { type: Number, min: 1, max: 100, default: 1 },
   binding: { type: String, default: "NONE" },
   requestedFormat: { type: String, default: "DOCX" },
   spacing: { type: String, enum: ["1.0", "1.5", "2.0", "single", "1.15", "double"], default: "1.5" },
