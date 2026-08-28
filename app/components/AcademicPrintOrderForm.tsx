@@ -107,10 +107,10 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         <label className="field"><span>Copies</span><input name="copies" type="number" min="1" max="100" defaultValue="1" /></label>
 
         <label className="field"><span>Spacing</span>
-          <select name="spacing" defaultValue="1.5"><option value="1.0">1.0 — Single</option><option value="1.5">1.5 lines</option><option value="2.0">2.0 — Double</option></select>
+          <select name="spacing" defaultValue="2.0"><option value="1.0">1.0 — Single (custom only)</option><option value="1.5">1.5 lines (custom only)</option><option value="2.0">2.0 — Double (UNN preset)</option></select>
         </label>
         <label className="field"><span>Document format</span>
-          <select name="formatPreset" defaultValue="unn"><option value="unn">UNN Undergraduate Project format — default</option><option value="custom">Custom academic format</option></select>
+          <select name="formatPreset" defaultValue="unn"><option value="unn">UNN Undergraduate Project format — 2.0 double spacing</option><option value="custom">Custom academic format</option></select>
         </label>
         <label className="field"><span>Font</span>
           <select name="font" defaultValue="Times New Roman"><option>Times New Roman</option><option>Arial</option><option>Calibri</option><option>Georgia</option></select>
@@ -210,7 +210,7 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         <input type="hidden" name="referralCode" value={referralCode} />
       </div>
 
-      <div className="notice" style={{marginTop:16}}><strong>UNN Undergraduate Project format:</strong> Times New Roman 12pt, 1.5 spacing by default, justified body paragraphs, academic heading hierarchy and hanging reference entries. Department or supervisor instructions can still be selected or added under custom instructions.</div>
+      <div className="notice" style={{marginTop:16}}><strong>UNN Undergraduate Project format:</strong> Times New Roman 12pt, <strong>2.0 double spacing</strong>, justified body paragraphs, academic heading hierarchy and hanging reference entries. To use 1.0 or 1.5 spacing, choose Custom academic format.</div>
       <div className="notice" style={{marginTop:10}}>Academic integrity: AI assignment drafts must be reviewed, fact-checked and adapted by the student. The writer will use supplied evidence and placeholders rather than invent citations or references.</div>
       <button className="btn primary" style={{marginTop:16}} type="submit" disabled={submitting}>{submitting ? "Preparing conversion..." : "Submit, Format & Convert to Word"}</button>
       {message && <p className="form-message" aria-live="polite">{message}</p>}
