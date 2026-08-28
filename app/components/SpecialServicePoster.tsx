@@ -39,7 +39,7 @@ export default function SpecialServicePoster() {
               <span>Upload or Paste</span>
               <span>UNN Undergraduate Project Format</span>
               <span>Times New Roman • 12pt</span>
-              <span>1.0 / 1.5 / 2.0 spacing</span>
+              <span>UNN • 2.0 Double Spacing</span>
               <span>Citations & References</span>
               <span>Binding & Campus Delivery</span>
             </div>
