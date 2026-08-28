@@ -8,6 +8,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <a className="btn secondary" href="/admin">Dashboard</a>
         <a className="btn secondary" href="/admin/converter">Word Studio</a>
         <a className="btn primary" href="/admin/thesis-writer">🎓 NOUN Thesis Writer</a>
+        <a className="btn secondary" href="/admin/noun-chapter-humanizer">✍🏽 NOUN Chapter Humanizer</a>
       </div>
     </nav>
     {children}
