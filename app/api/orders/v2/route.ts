@@ -67,8 +67,8 @@ export async function POST(request: Request) {
     const deliveryLocation = String(form.get("deliveryLocation") || "").trim();
     const deliveryNote = String(form.get("deliveryNote") || "").trim();
     const requestedFormat = String(form.get("requestedFormat") || "DOCX").trim();
-    const spacing = parseDocumentLineSpacing(form.get("spacing"));
     const formatPreset = parseFormatPreset(form.get("formatPreset"));
+    const spacing = formatPreset === "unn" ? "2.0" : parseDocumentLineSpacing(form.get("spacing"));
     const font = String(form.get("font") || "Times New Roman").trim();
     const fontSize = Number(form.get("fontSize") || 12);
     const citations = form.get("citations") === "on";
