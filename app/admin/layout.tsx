@@ -1,0 +1,15 @@
+import type { ReactNode } from "react";
+
+export default function AdminLayout({ children }: { children: ReactNode }) {
+  return <>
+    <nav className="container nav" aria-label="Admin tools">
+      <div className="brand">MABRIG ADMIN</div>
+      <div className="actions">
+        <a className="btn secondary" href="/admin">Dashboard</a>
+        <a className="btn secondary" href="/admin/converter">Word Studio</a>
+        <a className="btn primary" href="/admin/thesis-writer">🎓 NOUN Thesis Writer</a>
+      </div>
+    </nav>
+    {children}
+  </>;
+}
