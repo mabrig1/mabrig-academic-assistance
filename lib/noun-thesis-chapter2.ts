@@ -266,7 +266,7 @@ export async function generateExpertNounChapterTwo(input: NounThesisInput, setti
         baseUrl,
         model,
         instructions: [
-          focus === "conceptual" ? "Write # CHAPTER TWO and # REVIEW OF RELATED LITERATURE, then focus on ## 2.1 Conceptual Framework." : "Write ## 2.0 Introduction and ## 2.1 Conceptual Framework.",
+          focus === "conceptual" ? "Focus on ## 2.1 Conceptual Framework." : "Write ## 2.0 Introduction and ## 2.1 Conceptual Framework.",
           "Organise the conceptual framework into approximately eight meaningful thematic subheadings where the topic supports them. Do not use 'Concept of' as a heading.",
           "Define, compare and synthesize constructs using only verified supplied sources. Link the concepts directly to the approved objectives and research problem.",
         ].join("\n"),
@@ -283,7 +283,7 @@ export async function generateExpertNounChapterTwo(input: NounThesisInput, setti
         baseUrl,
         model,
         instructions: [
-          focus === "theory" ? "Write # CHAPTER TWO and # REVIEW OF RELATED LITERATURE, then focus on ## 2.2 Theoretical Framework." : "Write ONLY ## 2.2 Theoretical Framework.",
+          "Write ONLY ## 2.2 Theoretical Framework.",
           `Use exactly ${settings.theoryCount} theories when the verified source pack supports them. For each: identify the theory/proponent/year only from supplied evidence; explain major tenets; state supported criticisms/limitations; and apply the theory directly to this study.`,
           "If an original proponent/source is not verified in the source pack, insert [Add verified original-proponent citation] rather than inventing one.",
         ].join("\n"),
@@ -312,16 +312,15 @@ export async function generateExpertNounChapterTwo(input: NounThesisInput, setti
         `Generated verified literature-review material:\n${generatedReview}`,
       ].join("\n\n"),
       instructions: [
-        focus === "gap" ? "Write # CHAPTER TWO and # REVIEW OF RELATED LITERATURE, then write ## 2.4 Summary/Appraisal of Reviewed Literature and Research Gap." : "Write ONLY ## 2.4 Summary/Appraisal of Reviewed Literature and Research Gap.",
+        "Write ONLY ## 2.4 Summary/Appraisal of Reviewed Literature and Research Gap.",
         "Synthesize what the reviewed literature establishes, where studies agree or differ, the methodological/contextual/theoretical gaps that are actually supported, and how the current study addresses the identified gap.",
         "Do not introduce a new study or citation that is absent from the supplied/generated verified material.",
       ].join("\n"),
     });
   }
 
-  const focused = focus !== "all";
   const chapterText = [
-    focused ? "" : "# CHAPTER TWO\n\n# REVIEW OF RELATED LITERATURE",
+    "# CHAPTER TWO\n\n# REVIEW OF RELATED LITERATURE",
     stripChapterTwoWrapper(conceptual),
     stripChapterTwoWrapper(theory),
     stripChapterTwoWrapper(empirical.text),
