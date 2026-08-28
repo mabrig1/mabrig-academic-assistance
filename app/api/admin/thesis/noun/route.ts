@@ -14,6 +14,7 @@ import {
   type ExpertMethodologyType,
   type NounExpertSettings,
 } from "@/lib/noun-thesis-expert";
+import { generateExpertNounChapterTwo } from "@/lib/noun-thesis-chapter2";
 import { buildNounThesisWordDocument } from "@/lib/noun-thesis-word";
 
 export const runtime = "nodejs";
@@ -125,11 +126,13 @@ export async function POST(request: Request) {
     };
 
     const generated = expertSettings.enabled
-      ? await generateExpertNounThesis(input, expertSettings)
+      ? mode === "chapter2"
+        ? await generateExpertNounChapterTwo(input, expertSettings)
+        : await generateExpertNounThesis(input, expertSettings)
       : await generateNounThesis(input);
 
     if (expertSettings.enabled) {
-      const expertGenerated = generated as Awaited<ReturnType<typeof generateExpertNounThesis>>;
+      const expertGenerated = generated as { qualityAudit?: string; defensePack?: string };
       const supplemental = [
         input.appendices,
         expertGenerated.qualityAudit ? `EXPERT QUALITY AUDIT\n\n${expertGenerated.qualityAudit}` : "",
@@ -154,6 +157,7 @@ export async function POST(request: Request) {
         "X-NOUN-Writer-Mode": mode,
         "X-NOUN-Degree-Level": degreeLevel,
         "X-NOUN-Expert-Mode": expertSettings.enabled ? "true" : "false",
+        "X-NOUN-Chapter2-Staged": expertSettings.enabled && mode === "chapter2" ? "true" : "false",
         "X-AI-Used": "true",
       },
     });
