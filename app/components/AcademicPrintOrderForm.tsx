@@ -17,6 +17,7 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
   const [message, setMessage] = useState("");
   const [printOption, setPrintOption] = useState("DIGITAL_AND_PRINT");
   const [pages, setPages] = useState(1);
+  const [transformationMode, setTransformationMode] = useState("format");
   const [referralCode, setReferralCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -54,6 +55,7 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
     e.currentTarget.reset();
     setPrintOption("DIGITAL_AND_PRINT");
     setPages(1);
+    setTransformationMode("format");
   }
 
   return <div className={compact ? "" : "card"}>
@@ -68,7 +70,7 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         <label className="field"><span>Name</span><input name="name" required placeholder="Your name" /></label>
         <label className="field"><span>WhatsApp number</span><input name="whatsapp" required inputMode="tel" placeholder="080..." /></label>
 
-        <label className="field full"><span>Document title / topic</span><input name="documentTitle" maxLength={200} placeholder="e.g. The Impact of E-Governance on Service Delivery" /></label>
+        <label className="field full"><span>Document title / assignment topic</span><input name="documentTitle" required={transformationMode === "write-assignment"} maxLength={200} placeholder="e.g. The Impact of E-Governance on Service Delivery" /></label>
 
         <label className="field"><span>Document / service</span>
           <select name="service" defaultValue="Academic Document Printing" required>
@@ -89,7 +91,10 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
         <label className="field"><span>Copies</span><input name="copies" type="number" min="1" max="100" defaultValue="1" /></label>
 
         <label className="field"><span>Spacing</span>
-          <select name="spacing" defaultValue="1.5"><option value="single">Single</option><option value="1.15">1.15 lines</option><option value="1.5">1.5 lines</option><option value="double">Double</option></select>
+          <select name="spacing" defaultValue="1.5"><option value="1.0">1.0 — Single</option><option value="1.5">1.5 lines</option><option value="2.0">2.0 — Double</option></select>
+        </label>
+        <label className="field"><span>Document format</span>
+          <select name="formatPreset" defaultValue="unn"><option value="unn">UNN format — default</option><option value="custom">Custom academic format</option></select>
         </label>
         <label className="field"><span>Font</span>
           <select name="font" defaultValue="Times New Roman"><option>Times New Roman</option><option>Arial</option><option>Calibri</option><option>Georgia</option></select>
@@ -97,10 +102,11 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
 
         <label className="field"><span>Font size</span><input name="fontSize" type="number" min="8" max="30" defaultValue="12" /></label>
         <label className="field"><span>Text treatment</span>
-          <select name="transformationMode" defaultValue="format">
+          <select name="transformationMode" value={transformationMode} onChange={event => setTransformationMode(event.target.value)}>
             <option value="format">Format only — reliable, no AI required</option>
             <option value="proofread">Proofread &amp; improve clarity (AI)</option>
-            <option value="rewrite">Rewrite for clarity and originality (AI)</option>
+            <option value="write-assignment">Write Assignment from topic &amp; instructions (AI)</option>
+            <option value="rewrite-assignment">Rewrite submitted Assignment (AI)</option>
           </select>
         </label>
         <label className="field"><span>Body alignment</span>
@@ -159,12 +165,12 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
           <label className="field"><span>Delivery note</span><input name="deliveryNote" placeholder="Hostel, block or meeting point" /></label>
         </>}
 
-        <label className="field full"><span>Option 1 — Upload for conversion (max 4MB)</span><input name="file" type="file" accept=".txt,.md,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" /></label>
+        <label className="field full"><span>{transformationMode === "write-assignment" ? "Optional source material (max 4MB)" : "Option 1 — Upload for conversion (max 4MB)"}</span><input name="file" type="file" accept=".txt,.md,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" /></label>
         <div className="conversion-upload-note field full">⚡ Instant text extraction for Word generation is available for pasted text, TXT/Markdown, DOCX and text-based PDFs. Complex layouts, scanned PDFs, PowerPoint and Excel may require manual printer review.</div>
 
         <div className="upload-divider field full"><span>OR</span></div>
 
-        <label className="field full"><span>Option 2 — Paste your work here for instant Word conversion</span><textarea name="pastedContent" rows={12} maxLength={100000} placeholder="Paste the text of your assignment, term paper, project or other document here. The print shop can generate a formatted Word document from this text." /></label>
+        <label className="field full"><span>{transformationMode === "write-assignment" ? "Optional notes, outline or verified source material" : "Option 2 — Paste your assignment here"}</span><textarea name="pastedContent" rows={12} maxLength={100000} placeholder={transformationMode === "write-assignment" ? "Paste an outline, lecturer's guide, notes or verified sources. The AI will not invent citations or references." : "Paste the full assignment or document text to format, proofread or rewrite."} /></label>
 
         <div className="field full check-row">
           <input type="hidden" name="boldHeadings" value="off" />
@@ -184,12 +190,12 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
           <label><input name="conversionRequested" type="checkbox" defaultChecked /> Convert / format into Word</label>
         </div>
 
-        <label className="field full"><span>Instructions / deadline</span><textarea name="instructions" required placeholder="Tell us your deadline and any special formatting, conversion or printing instructions." /></label>
+        <label className="field full"><span>{transformationMode === "write-assignment" ? "Assignment question, requirements and deadline" : "Instructions / deadline"}</span><textarea name="instructions" required placeholder={transformationMode === "write-assignment" ? "Enter the complete assignment question, lecturer's requirements, course context, deadline and any verified sources to use." : "Tell us your deadline and any special formatting, conversion or printing instructions."} /></label>
         <input type="hidden" name="referralCode" value={referralCode} />
       </div>
 
-      <div className="notice" style={{marginTop:16}}><strong>Word superpower:</strong> Times New Roman, 12pt and 1.5 spacing are selected by default. APA 7 and MLA 9 apply double spacing, 0.5-inch paragraph indents, hanging references and top-right page numbers. The service formats the sources supplied; it does not invent missing citations.</div>
-      <div className="notice" style={{marginTop:10}}>Academic integrity: this service supports editing, formatting, proofreading and document production. Students remain responsible for assessed submissions.</div>
+      <div className="notice" style={{marginTop:16}}><strong>UNN format is the default:</strong> Times New Roman 12pt, 1.5 spacing, justified body paragraphs with 0.5-inch first-line indents, bold headings/subheadings and hanging reference entries. You can select 1.0, 1.5 or 2.0 spacing.</div>
+      <div className="notice" style={{marginTop:10}}>Academic integrity: AI assignment drafts must be reviewed, fact-checked and adapted by the student. The writer will use supplied evidence and placeholders rather than invent citations or references.</div>
       <button className="btn primary" style={{marginTop:16}} type="submit" disabled={submitting}>{submitting ? "Preparing conversion..." : "Submit, Format & Convert to Word"}</button>
       {message && <p className="form-message" aria-live="polite">{message}</p>}
       {message.includes("Order ") && <a className="btn whatsapp" style={{marginTop:8}} target="_blank" rel="noreferrer" href="https://wa.me/2347065342818?text=Hello%20Mabrig%20ICT%2C%20I%20have%20submitted%20an%20academic%20document%20conversion%20and%20printing%20order%20on%20the%20website.%20Please%20help%20me%20continue%20with%20the%20order.">Continue on WhatsApp</a>}

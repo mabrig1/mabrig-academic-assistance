@@ -10,6 +10,7 @@ import {
 import {
   parseBodyAlignment,
   parseDocumentLineSpacing,
+  parseFormatPreset,
   parseHeadingPreset,
   parsePageNumberPosition,
   parseParagraphIndentation,
@@ -28,9 +29,13 @@ type OrderDoc = {
   userId?: unknown;
   serviceId?: unknown;
   pastedContent?: string | null;
+  instructions?: string;
   font?: string;
   fontSize?: number;
   spacing?: string;
+  formatPreset?: string;
+  pages?: number;
+  citations?: boolean;
   coverPage?: boolean;
   references?: boolean;
   transformationMode?: string;
@@ -65,12 +70,6 @@ export async function GET(request: Request, context: RouteContext) {
     if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
 
     const text = order.pastedContent?.trim() || "";
-    if (!text) {
-      return NextResponse.json(
-        { error: "This order has no stored convertible text. Ask the student to paste the text or submit a new supported upload." },
-        { status: 409 },
-      );
-    }
 
     const [userResult, serviceResult] = await Promise.all([
       User.findById(order.userId).lean().exec(),
@@ -84,7 +83,25 @@ export async function GET(request: Request, context: RouteContext) {
     const transformationMode = requestedMode === "ai"
       ? parseDocumentTransformationMode(order.transformationMode)
       : "format";
-    const transformed = await transformAcademicText({ text, title, mode: transformationMode });
+    const writingAssignment = transformationMode === "write-assignment";
+    if (!text && !writingAssignment) {
+      return NextResponse.json(
+        { error: "This order has no stored convertible text. Ask the student to paste the text or submit a new supported upload." },
+        { status: 409 },
+      );
+    }
+    if (writingAssignment && !order.documentTitle?.trim() && !order.instructions?.trim()) {
+      return NextResponse.json({ error: "This assignment order has no topic or writing brief." }, { status: 409 });
+    }
+    const transformed = await transformAcademicText({
+      text,
+      title,
+      mode: transformationMode,
+      instructions: order.instructions || "",
+      targetPages: order.pages || 3,
+      citationsRequested: Boolean(order.citations),
+      referencesRequested: Boolean(order.references),
+    });
 
     const buffer = await buildAcademicWordDocument({
       text: transformed.text,
@@ -94,6 +111,7 @@ export async function GET(request: Request, context: RouteContext) {
       font: order.font || "Times New Roman",
       fontSize: order.fontSize || 12,
       spacing: parseDocumentLineSpacing(order.spacing),
+      formatPreset: parseFormatPreset(order.formatPreset),
       coverPage: Boolean(order.coverPage),
       references: Boolean(order.references),
       bodyAlignment: parseBodyAlignment(order.bodyAlignment),

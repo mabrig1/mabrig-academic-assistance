@@ -38,7 +38,7 @@ export default function SpecialServicePoster() {
             <div className="poster-features" aria-label="Service features">
               <span>Upload or Paste</span>
               <span>Times New Roman • 12pt</span>
-              <span>Single / 1.5 / Double spacing</span>
+              <span>1.0 / 1.5 / 2.0 spacing</span>
               <span>Citations & References</span>
               <span>Cover Page</span>
               <span>Binding & Campus Delivery</span>

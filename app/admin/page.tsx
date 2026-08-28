@@ -48,6 +48,7 @@ type OrderRow = {
   binding?: string;
   requestedFormat?: string;
   spacing?: string;
+  formatPreset?: string;
   font?: string;
   fontSize?: number;
   citations?: boolean;
@@ -90,7 +91,13 @@ function whatsappLink(value?: string) {
 }
 
 function label(value?: string) {
-  return (value || "—").replaceAll("_", " ");
+  return (value || "—").replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function aiActionLabel(mode?: string) {
+  if (mode === "write-assignment") return "Write Assignment";
+  if (mode === "rewrite" || mode === "rewrite-assignment") return "Rewrite Assignment";
+  return "Proofread Assignment";
 }
 
 async function updateOrder(formData: FormData) {
@@ -259,9 +266,17 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         {visibleOrders.map(order => {
           const wa = whatsappLink(order.user?.whatsapp);
           const content = order.pastedContent?.trim() || "";
+          const writingAssignment = order.transformationMode === "write-assignment";
+          const unnFormatting = (order.formatPreset || "unn") === "unn" && !["apa", "mla"].includes(order.referenceStyle || "none");
           const currentStatus = order.status || "NEW";
           const selectableStatus = ALL_STATUSES.has(currentStatus) ? currentStatus : "NEW";
-          const conversionReady = Boolean(content && order.orderNumber);
+          const formatDownloadReady = Boolean(content && order.orderNumber);
+          const aiDownloadReady = Boolean(
+            order.orderNumber &&
+            order.transformationMode !== "format" &&
+            (content || (writingAssignment && order.documentTitle && order.instructions)),
+          );
+          const conversionReady = formatDownloadReady || aiDownloadReady;
           const hasSubmittedFile = Boolean(order.file && order.orderNumber);
           const originalDownloadReady = Boolean(hasSubmittedFile && order.file?.storageKey?.startsWith("mongodb/"));
           const referenceStyle = parseReferenceStyle(order.referenceStyle || (order.apaFormatting ? "apa7" : "none"));
@@ -285,10 +300,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <div><span>Pages / Copies</span><strong>{order.pages || 1} pages × {order.copies || 1}</strong></div>
                 <div><span>Print</span><strong>{label(order.printType)} • {label(order.printOption)}</strong></div>
                 <div><span>Binding</span><strong>{label(order.binding)}</strong></div>
-                <div><span>Formatting</span><strong>{order.font || "Times New Roman"} {order.fontSize || 12}pt • {order.spacing || "1.5"} spacing</strong></div>
+                <div><span>Formatting</span><strong>{label(order.formatPreset || "UNN")} • {unnFormatting ? "Times New Roman 12pt" : `${order.font || "Times New Roman"} ${order.fontSize || 12}pt`} • {order.spacing || "1.5"} spacing</strong></div>
                 <div><span>Requested output</span><strong>{order.requestedFormat || "DOCX"}</strong></div>
                 <div><span>Academic options</span><strong>{[order.citations && "Citations", order.references && "References", order.coverPage && "Cover page", order.conversionRequested && "Convert/format"].filter(Boolean).join(" • ") || "None selected"}</strong></div>
-                <div><span>Text treatment</span><strong>{label(order.transformationMode || "FORMAT")}</strong></div>
+                <div><span>Text treatment</span><strong>{order.transformationMode && order.transformationMode !== "format" ? aiActionLabel(order.transformationMode) : "Format only"}</strong></div>
                 <div><span>Paragraph layout</span><strong>{label(order.bodyAlignment || "JUSTIFIED")} • {label(order.paragraphIndentation || "FIRST-LINE")}</strong></div>
                 <div><span>Heading / pages</span><strong>{label(order.headingPreset || "ACADEMIC")} • {label(order.pageNumberPosition || "FOOTER-CENTER")}</strong></div>
                 <div><span>Advanced Word options</span><strong>{[order.automaticTableOfContents && "Contents page", referenceStyle !== "none" && label(referenceStyle), order.widowOrphanControl !== false && "Widow/orphan control"].filter(Boolean).join(" • ") || "None selected"}</strong></div>
@@ -307,15 +322,17 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   <h4>{conversionReady ? "This order is ready for instant Word generation" : "Automatic Word generation is not ready for this order"}</h4>
                   <p>
                     {conversionReady
-                      ? `Download a clean .docx using ${order.font || "Times New Roman"}, ${order.fontSize || 12}pt and ${order.spacing || "1.5"} spacing. Standard formatting works without AI.`
+                      ? writingAssignment && !content
+                        ? `The topic and assignment brief are ready for AI drafting in the default UNN Word format.`
+                        : `Download a clean .docx using ${order.font || "Times New Roman"}, ${order.fontSize || 12}pt and ${order.spacing || "1.5"} spacing. Standard formatting works without AI.`
                       : "Older uploads or unsupported file types may not contain stored convertible text. Use the Conversion Studio and paste the text manually."}
                   </p>
                   {order.conversionWarning && <small className="conversion-warning">{order.conversionWarning}</small>}
                 </div>
                 <div className="conversion-panel-actions">
-                  {conversionReady && <a className="btn conversion-btn" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/word?mode=format`}>Download Formatted Word (.docx)</a>}
-                  {conversionReady && order.transformationMode !== "format" && aiConfigured && <a className="btn secondary" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/word?mode=ai`}>AI {order.transformationMode === "rewrite" ? "Rewrite" : "Proofread"} &amp; Format</a>}
-                  {conversionReady && order.transformationMode !== "format" && !aiConfigured && <span className="btn admin-file-disabled" title="Configure AI_API_KEY, AI_BASE_URL and AI_MODEL to enable AI editing.">AI editing unavailable</span>}
+                  {formatDownloadReady && <a className="btn conversion-btn" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/word?mode=format`}>Download Formatted Word (.docx)</a>}
+                  {aiDownloadReady && aiConfigured && <a className="btn secondary" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/word?mode=ai`}>AI {aiActionLabel(order.transformationMode)} (.docx)</a>}
+                  {aiDownloadReady && !aiConfigured && <span className="btn admin-file-disabled" title="Configure AI_API_KEY, AI_BASE_URL and AI_MODEL to enable AI editing.">AI assignment feature unavailable</span>}
                   {originalDownloadReady && <a className="btn secondary" href={`/api/admin/orders/${encodeURIComponent(order.orderNumber || "")}/file`}>Download Uploaded Original (Unformatted)</a>}
                   {hasSubmittedFile && !originalDownloadReady && <span className="btn admin-file-disabled" title="Older submissions did not retain the original file bytes.">Uploaded original unavailable — legacy order</span>}
                   <a className="btn secondary" href="/admin/converter">Open Conversion Studio</a>
