@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { attachmentContentDisposition, safeAttachmentFilename } from "@/lib/download-filename";
 import {
-  buildNounThesisWordDocument,
   generateNounThesis,
   NounThesisError,
   parseNounDegreeLevel,
@@ -9,6 +8,7 @@ import {
   titleWordCount,
   type NounThesisInput,
 } from "@/lib/noun-thesis";
+import { buildNounThesisWordDocument } from "@/lib/noun-thesis-word";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
