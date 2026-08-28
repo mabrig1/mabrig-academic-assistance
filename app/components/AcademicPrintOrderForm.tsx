@@ -9,6 +9,7 @@ const MAX_PASTED_CHARS = 500_000;
 const services = [
   "Academic Document Printing",
   "Assignment & Term-Paper Support",
+  "Article Rewriter & Humanizer",
   "UNN Undergraduate Project Formatting",
   "Project & Thesis Formatting",
   "Research Assistance",
@@ -74,11 +75,13 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
     setTransformationMode("format");
   }
 
+  const humanizeMode = transformationMode === "rewrite-assignment";
+
   return <div className={compact ? "" : "card"}>
     {!compact && <>
       <span className="badge">Up to 100 pages • 4MB maximum upload</span>
-      <h2>Academic Document Printing & Word Conversion</h2>
-      <p>Upload your work or paste it directly. We can clean the text, apply academic formatting, generate a Word document and prepare it for printing.</p>
+      <h2>Academic Document Printing, Rewriting & Word Conversion</h2>
+      <p>Upload your work or paste it directly. We can rewrite and humanize articles, clean text, apply academic formatting, generate a Word document and prepare it for printing.</p>
     </>}
 
     <form onSubmit={submit}>
@@ -122,7 +125,7 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
             <option value="format">Format only — reliable, no AI required</option>
             <option value="proofread">Proofread &amp; improve clarity (AI)</option>
             <option value="write-assignment">Write Assignment from topic &amp; instructions (AI)</option>
-            <option value="rewrite-assignment">Rewrite submitted Assignment (AI)</option>
+            <option value="rewrite-assignment">Article Rewriter &amp; Humanizer — natural rewrite (AI)</option>
           </select>
         </label>
         <label className="field"><span>Body alignment</span>
@@ -181,12 +184,12 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
           <label className="field"><span>Delivery note</span><input name="deliveryNote" placeholder="Hostel, block or meeting point" /></label>
         </>}
 
-        <label className="field full"><span>{transformationMode === "write-assignment" ? "Optional source material (max 4MB)" : "Option 1 — Upload for conversion (max 4MB)"}</span><input name="file" type="file" accept=".txt,.md,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" /></label>
+        <label className="field full"><span>{transformationMode === "write-assignment" ? "Optional source material (max 4MB)" : humanizeMode ? "Upload article or draft to rewrite (max 4MB)" : "Option 1 — Upload for conversion (max 4MB)"}</span><input name="file" type="file" accept=".txt,.md,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" /></label>
         <div className="conversion-upload-note field full">⚡ Uploads are limited to 4MB. Instant text extraction for Word generation is available for pasted text, TXT/Markdown, DOCX and text-based PDFs. Complex layouts, scanned PDFs, PowerPoint and Excel may require manual printer review.</div>
 
         <div className="upload-divider field full"><span>OR</span></div>
 
-        <label className="field full"><span>{transformationMode === "write-assignment" ? "Optional notes, outline or verified source material" : "Option 2 — Paste your assignment here"}</span><textarea name="pastedContent" rows={12} maxLength={MAX_PASTED_CHARS} placeholder={transformationMode === "write-assignment" ? "Paste an outline, lecturer's guide, notes or verified sources. The AI will not invent citations or references." : "Paste the full assignment or document text to format, proofread or rewrite."} /></label>
+        <label className="field full"><span>{transformationMode === "write-assignment" ? "Optional notes, outline or verified source material" : humanizeMode ? "Paste the article or draft to rewrite and humanize" : "Option 2 — Paste your assignment here"}</span><textarea name="pastedContent" rows={12} maxLength={MAX_PASTED_CHARS} placeholder={transformationMode === "write-assignment" ? "Paste an outline, lecturer's guide, notes or verified sources. The AI will not invent citations or references." : humanizeMode ? "Paste the complete article, assignment or draft. The rewrite preserves facts, citations, references, quotations and meaning while improving natural flow and readability." : "Paste the full assignment or document text to format, proofread or rewrite."} /></label>
 
         <div className="field full check-row">
           <input type="hidden" name="boldHeadings" value="off" />
@@ -206,13 +209,14 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
           <label><input name="conversionRequested" type="checkbox" defaultChecked /> Convert / format into Word</label>
         </div>
 
-        <label className="field full"><span>{transformationMode === "write-assignment" ? "Assignment question, requirements and deadline" : "Instructions / deadline"}</span><textarea name="instructions" required placeholder={transformationMode === "write-assignment" ? "Enter the complete assignment question, lecturer's requirements, course context, deadline and any verified sources to use." : "Tell us your deadline and any special formatting, conversion or printing instructions."} /></label>
+        <label className="field full"><span>{transformationMode === "write-assignment" ? "Assignment question, requirements and deadline" : humanizeMode ? "Humanizing instructions / preferred tone / deadline" : "Instructions / deadline"}</span><textarea name="instructions" required placeholder={transformationMode === "write-assignment" ? "Enter the complete assignment question, lecturer's requirements, course context, deadline and any verified sources to use." : humanizeMode ? "Optional: tell us the preferred tone, audience and deadline. The service improves natural wording and flow without changing evidence or claiming to bypass AI detection." : "Tell us your deadline and any special formatting, conversion or printing instructions."} /></label>
         <input type="hidden" name="referralCode" value={referralCode} />
       </div>
 
+      {humanizeMode && <div className="notice" style={{marginTop:16}}><strong>Article Rewriter & Humanizer:</strong> rewrites sentence structure and wording for smoother, more natural reading while preserving meaning, facts, figures, quotations, citations and references. It is an editing service, not a guarantee of any AI-detector result.</div>}
       <div className="notice" style={{marginTop:16}}><strong>UNN Undergraduate Project format:</strong> Times New Roman 12pt, <strong>2.0 double spacing</strong>, justified body paragraphs, academic heading hierarchy and hanging reference entries. To use 1.0 or 1.5 spacing, choose Custom academic format.</div>
-      <div className="notice" style={{marginTop:10}}>Academic integrity: AI assignment drafts must be reviewed, fact-checked and adapted by the student. The writer will use supplied evidence and placeholders rather than invent citations or references.</div>
-      <button className="btn primary" style={{marginTop:16}} type="submit" disabled={submitting}>{submitting ? "Preparing conversion..." : "Submit, Format & Convert to Word"}</button>
+      <div className="notice" style={{marginTop:10}}>Academic integrity: AI drafts and rewrites must be reviewed, fact-checked and adapted by the student or author. The system preserves supplied evidence and does not invent citations or references.</div>
+      <button className="btn primary" style={{marginTop:16}} type="submit" disabled={submitting}>{submitting ? "Preparing conversion..." : humanizeMode ? "Rewrite, Humanize & Convert to Word" : "Submit, Format & Convert to Word"}</button>
       {message && <p className="form-message" aria-live="polite">{message}</p>}
       {message.includes("Order ") && <a className="btn whatsapp" style={{marginTop:8}} target="_blank" rel="noreferrer" href="https://wa.me/2347065342818?text=Hello%20Mabrig%20ICT%2C%20I%20have%20submitted%20an%20academic%20document%20conversion%20and%20printing%20order%20on%20the%20website.%20Please%20help%20me%20continue%20with%20the%20order.">Continue on WhatsApp</a>}
     </form>
