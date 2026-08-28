@@ -21,6 +21,7 @@ import {
 import type {
   BodyAlignment,
   DocumentLineSpacing,
+  FormatPreset,
   HeadingPreset,
   PageNumberPosition,
   ParagraphIndentation,
@@ -35,6 +36,7 @@ export type WordDocumentOptions = {
   font?: string;
   fontSize?: number;
   spacing?: DocumentLineSpacing | string;
+  formatPreset?: FormatPreset;
   coverPage?: boolean;
   references?: boolean;
   paragraphIndentation?: ParagraphIndentation;
@@ -63,9 +65,9 @@ type DocumentBlock =
   | { kind: "spacer" };
 
 function lineSpacing(value?: string) {
-  if (value === "single") return 240;
+  if (value === "1.0" || value === "single") return 240;
   if (value === "1.15") return 276;
-  if (value === "double") return 480;
+  if (value === "2.0" || value === "double") return 480;
   return 360;
 }
 
@@ -575,15 +577,16 @@ export async function buildAcademicWordDocument(options: WordDocumentOptions) {
   const apaFormatting = Boolean(options.apaFormatting || referenceStyle === "apa7");
   const mlaFormatting = referenceStyle === "mla9";
   const standardFormatting = apaFormatting || mlaFormatting;
-  const font = standardFormatting ? "Times New Roman" : ((options.font || "Times New Roman").trim() || "Times New Roman");
-  const fontSize = standardFormatting ? 12 : Math.min(30, Math.max(8, Number(options.fontSize || 12)));
+  const unnFormatting = (options.formatPreset || "unn") === "unn" && !standardFormatting;
+  const font = standardFormatting || unnFormatting ? "Times New Roman" : ((options.font || "Times New Roman").trim() || "Times New Roman");
+  const fontSize = standardFormatting || unnFormatting ? 12 : Math.min(30, Math.max(8, Number(options.fontSize || 12)));
   const spacing = lineSpacing(standardFormatting ? "double" : options.spacing);
-  const paragraphIndentation = standardFormatting ? "first-line" : (options.paragraphIndentation || "first-line");
-  const bodyAlignment = standardFormatting ? "left" : (options.bodyAlignment || "justified");
-  const boldHeadings = standardFormatting || options.boldHeadings !== false;
-  const headingPreset = apaFormatting ? "apa7" : (options.headingPreset || "academic");
+  const paragraphIndentation = standardFormatting || unnFormatting ? "first-line" : (options.paragraphIndentation || "first-line");
+  const bodyAlignment = standardFormatting ? "left" : unnFormatting ? "justified" : (options.bodyAlignment || "justified");
+  const boldHeadings = standardFormatting || unnFormatting || options.boldHeadings !== false;
+  const headingPreset = apaFormatting ? "apa7" : unnFormatting ? "academic" : (options.headingPreset || "academic");
   const pageNumberPosition = standardFormatting ? "header-right" : (options.pageNumberPosition || "footer-center");
-  const references = standardFormatting || Boolean(options.references);
+  const references = standardFormatting || unnFormatting || Boolean(options.references);
   const automaticTableOfContents = Boolean(options.automaticTableOfContents);
   const removeEmptyParagraphs = options.removeEmptyParagraphs !== false;
   const widowOrphanControl = options.widowOrphanControl !== false;

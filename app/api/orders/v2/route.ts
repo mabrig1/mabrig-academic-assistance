@@ -9,6 +9,7 @@ import {
   formToggleEnabled,
   parseBodyAlignment,
   parseDocumentLineSpacing,
+  parseFormatPreset,
   parseHeadingPreset,
   parsePageNumberPosition,
   parseParagraphIndentation,
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
     const deliveryNote = String(form.get("deliveryNote") || "").trim();
     const requestedFormat = String(form.get("requestedFormat") || "DOCX").trim();
     const spacing = parseDocumentLineSpacing(form.get("spacing"));
+    const formatPreset = parseFormatPreset(form.get("formatPreset"));
     const font = String(form.get("font") || "Times New Roman").trim();
     const fontSize = Number(form.get("fontSize") || 12);
     const citations = form.get("citations") === "on";
@@ -89,12 +91,15 @@ export async function POST(request: Request) {
     const widowOrphanControl = formToggleEnabled(form, "widowOrphanControl");
     const file = form.get("file");
     const hasFile = file instanceof File && file.size > 0;
+    const writeAssignmentRequested = transformationMode === "write-assignment";
+    const assignmentBriefReady = Boolean(writeAssignmentRequested && documentTitle && instructions);
 
     if (!name || !whatsapp || !serviceName || !instructions) return NextResponse.json({ error: "Please complete all required fields." }, { status: 400 });
     if (!Number.isInteger(pages) || pages < 1 || pages > MAX_PAGES) return NextResponse.json({ error: `Page count must be between 1 and ${MAX_PAGES} pages.` }, { status: 400 });
     if (!Number.isFinite(fontSize) || fontSize < 8 || fontSize > 30) return NextResponse.json({ error: "Font size must be between 8 and 30pt." }, { status: 400 });
     if (printOption === "DIGITAL_PRINT_DELIVERY" && !deliveryLocation) return NextResponse.json({ error: "Choose a delivery location." }, { status: 400 });
-    if (!hasFile && !pastedContent) return NextResponse.json({ error: "Upload a file or paste your document text before submitting." }, { status: 400 });
+    if (writeAssignmentRequested && !documentTitle) return NextResponse.json({ error: "Add the assignment topic before using Write Assignment." }, { status: 400 });
+    if (!hasFile && !pastedContent && !assignmentBriefReady) return NextResponse.json({ error: "Upload a file, paste your assignment, or choose Write Assignment and provide a topic and instructions." }, { status: 400 });
     if (pastedContent.length > MAX_PASTED_CHARS) return NextResponse.json({ error: "Pasted content is too long. Keep it within the 20-page submission limit." }, { status: 413 });
 
     if (hasFile) {
@@ -103,7 +108,9 @@ export async function POST(request: Request) {
     }
 
     let documentText = pastedContent;
-    let conversionSource: "PASTE" | "TEXT" | "DOCX" | "PDF" | "UNSUPPORTED" | null = pastedContent ? "PASTE" : null;
+    let conversionSource: "PASTE" | "PROMPT" | "TEXT" | "DOCX" | "PDF" | "UNSUPPORTED" | null = pastedContent
+      ? "PASTE"
+      : assignmentBriefReady ? "PROMPT" : null;
     let conversionWarning: string | null = null;
 
     if (hasFile && !documentText) {
@@ -148,6 +155,7 @@ export async function POST(request: Request) {
       binding,
       requestedFormat,
       spacing,
+      formatPreset,
       font,
       fontSize,
       citations,
@@ -216,10 +224,10 @@ export async function POST(request: Request) {
       referralCode,
       status: order.status,
       maxPages: MAX_PAGES,
-      conversionReady: Boolean(documentText),
+      conversionReady: Boolean(documentText || assignmentBriefReady),
       conversionSource,
       conversionWarning,
-      source: hasFile ? (pastedContent ? "FILE_AND_PASTE" : "FILE") : "PASTE",
+      source: hasFile ? (pastedContent ? "FILE_AND_PASTE" : "FILE") : assignmentBriefReady ? "PROMPT" : "PASTE",
     });
   } catch (error) {
     console.error("MongoDB order creation failed", error);

@@ -1,9 +1,10 @@
 export type ParagraphIndentation = "none" | "first-line" | "first-line-wide";
 export type BodyAlignment = "left" | "justified";
-export type DocumentLineSpacing = "single" | "1.15" | "1.5" | "double";
+export type DocumentLineSpacing = "1.0" | "1.5" | "2.0";
 export type HeadingPreset = "academic" | "apa7" | "compact";
 export type PageNumberPosition = "none" | "header-right" | "footer-center" | "footer-right";
 export type ReferenceStyle = "none" | "apa7" | "mla9";
+export type FormatPreset = "unn" | "custom";
 
 export function parseParagraphIndentation(value: unknown): ParagraphIndentation {
   return value === "none" || value === "first-line-wide" ? value : "first-line";
@@ -14,7 +15,13 @@ export function parseBodyAlignment(value: unknown): BodyAlignment {
 }
 
 export function parseDocumentLineSpacing(value: unknown): DocumentLineSpacing {
-  return value === "single" || value === "1.15" || value === "double" ? value : "1.5";
+  if (value === "1.0" || value === "single") return "1.0";
+  if (value === "2.0" || value === "double") return "2.0";
+  return "1.5";
+}
+
+export function parseFormatPreset(value: unknown): FormatPreset {
+  return value === "custom" ? "custom" : "unn";
 }
 
 export function parseHeadingPreset(value: unknown): HeadingPreset {

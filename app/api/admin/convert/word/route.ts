@@ -8,6 +8,7 @@ import {
   formToggleEnabled,
   parseBodyAlignment,
   parseDocumentLineSpacing,
+  parseFormatPreset,
   parseHeadingPreset,
   parsePageNumberPosition,
   parseParagraphIndentation,
@@ -32,6 +33,8 @@ export async function POST(request: Request) {
     const font = String(form.get("font") || "Times New Roman").trim() || "Times New Roman";
     const fontSize = Math.min(30, Math.max(8, Number(form.get("fontSize") || 12)));
     const spacing = parseDocumentLineSpacing(form.get("spacing"));
+    const formatPreset = parseFormatPreset(form.get("formatPreset"));
+    const targetPages = Math.min(20, Math.max(1, Number(form.get("targetPages") || 3)));
     const coverPage = form.get("coverPage") === "on";
     const references = form.get("references") === "on";
     const transformationMode = parseDocumentTransformationMode(form.get("transformationMode"));
@@ -52,7 +55,14 @@ export async function POST(request: Request) {
     if (!text) return NextResponse.json({ error: "Paste text before converting to Word." }, { status: 400 });
     if (text.length > MAX_CHARS) return NextResponse.json({ error: "Text is too long for the instant converter." }, { status: 413 });
 
-    const transformed = await transformAcademicText({ text, title, mode: transformationMode });
+    const transformed = await transformAcademicText({
+      text: transformationMode === "write-assignment" ? "" : text,
+      title,
+      mode: transformationMode,
+      instructions: transformationMode === "write-assignment" ? text : "",
+      targetPages,
+      referencesRequested: references,
+    });
     const buffer = await buildAcademicWordDocument({
       text: transformed.text,
       title,
@@ -60,6 +70,7 @@ export async function POST(request: Request) {
       font,
       fontSize,
       spacing,
+      formatPreset,
       coverPage,
       references,
       bodyAlignment,

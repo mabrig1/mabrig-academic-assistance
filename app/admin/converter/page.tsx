@@ -48,24 +48,35 @@ export default function AdminConverterPage() {
                 </select>
               </label>
               <label className="field">
+                <span>Document format</span>
+                <select name="formatPreset" defaultValue="unn">
+                  <option value="unn">UNN format — default</option>
+                  <option value="custom">Custom academic format</option>
+                </select>
+              </label>
+              <label className="field">
                 <span>Font size</span>
                 <input name="fontSize" type="number" min="8" max="30" defaultValue="12" />
               </label>
               <label className="field">
                 <span>Line spacing</span>
                 <select name="spacing" defaultValue="1.5">
-                  <option value="single">Single</option>
-                  <option value="1.15">1.15 lines</option>
+                  <option value="1.0">1.0 — Single</option>
                   <option value="1.5">1.5 lines</option>
-                  <option value="double">Double</option>
+                  <option value="2.0">2.0 — Double</option>
                 </select>
+              </label>
+              <label className="field">
+                <span>Target assignment pages</span>
+                <input name="targetPages" type="number" min="1" max="20" defaultValue="3" />
               </label>
               <label className="field">
                 <span>Text treatment</span>
                 <select name="transformationMode" defaultValue="format">
                   <option value="format">Format only — reliable, no AI required</option>
                   <option value="proofread">Proofread &amp; improve clarity (AI)</option>
-                  <option value="rewrite">Rewrite for clarity and originality (AI)</option>
+                  <option value="write-assignment">Write Assignment from topic &amp; brief (AI)</option>
+                  <option value="rewrite-assignment">Rewrite submitted Assignment (AI)</option>
                 </select>
               </label>
               <label className="field">
@@ -132,13 +143,13 @@ export default function AdminConverterPage() {
                 <label><input type="checkbox" name="references" /> Format references with hanging indent</label>
               </div>
               <label className="field full">
-                <span>Paste document text</span>
-                <textarea name="text" required className="converter-textarea" placeholder="Paste the assignment, term paper, project section, notes or other academic text here..." />
+                <span>Assignment brief or submitted assignment</span>
+                <textarea name="text" required className="converter-textarea" placeholder="For Write Assignment, enter the full topic/question and requirements. For Rewrite Assignment, paste the complete existing assignment." />
               </label>
             </div>
 
             <div className="notice" style={{ marginTop: 16 }}>
-              <strong>Smart academic conversion:</strong> AI modes genuinely improve or rewrite the wording before Word generation. APA 7 applies APA headings and a References list; MLA 9 applies a surname/page header and Works Cited layout. Both use double spacing, Times New Roman 12pt and hanging reference indents. The tool formats supplied sources but never invents missing citations.
+              <strong>Two assignment powers:</strong> Write Assignment creates a structured draft from a topic and brief; Rewrite Assignment transforms a submitted assignment while preserving its facts and citations. UNN format is selected by default with Times New Roman 12pt, 1.5 spacing, first-line body indents, bold headings and hanging references. The writer never invents missing sources.
             </div>
             <div className="notice" style={{ marginTop: 10 }}>
               <strong>AI connection:</strong> {aiConfigured ? `Configured${aiModel ? ` with ${aiModel}` : ""}.` : "Not fully configured. Add AI_API_KEY, AI_BASE_URL and AI_MODEL in Vercel, then redeploy."}
@@ -154,7 +165,9 @@ export default function AdminConverterPage() {
           <div className="conversion-feature-list">
             <div><strong>Paste → Word</strong><span>WhatsApp or copied text becomes .docx.</span></div>
             <div><strong>DOCX/PDF → clean Word</strong><span>New supported uploads are text-extracted and can be regenerated from their order.</span></div>
-            <div><strong>Academic formatting</strong><span>Times New Roman 12pt, spacing and heading cleanup.</span></div>
+            <div><strong>UNN formatting</strong><span>Times New Roman 12pt, 1.0/1.5/2.0 spacing, body and reference indents.</span></div>
+            <div><strong>Write Assignment</strong><span>Turn a topic and lecturer's brief into a structured academic draft.</span></div>
+            <div><strong>Rewrite Assignment</strong><span>Rework a complete assignment while preserving facts, citations and meaning.</span></div>
             <div><strong>Printer control</strong><span>The Word file is generated inside the protected admin system.</span></div>
             <div><strong>Clean empty spaces</strong><span>Remove blank paragraphs and accidental vertical gaps before download.</span></div>
             <div><strong>APA or MLA</strong><span>Choose APA 7 References or MLA 9 Works Cited formatting.</span></div>
