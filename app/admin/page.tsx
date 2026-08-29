@@ -45,6 +45,7 @@ type OrderRow = {
   printType?: string;
   copies?: number;
   pages?: number;
+  targetPages?: number | null;
   binding?: string;
   requestedFormat?: string;
   spacing?: string;
@@ -98,6 +99,8 @@ function label(value?: string) {
 function aiActionLabel(mode?: string) {
   if (mode === "write-assignment") return "Write Assignment";
   if (mode === "rewrite" || mode === "rewrite-assignment") return "Rewrite Assignment";
+  if (mode === "reduce-pages") return "Reduce Pages";
+  if (mode === "expand-pages") return "Expand Pages";
   return "Proofread Assignment";
 }
 
@@ -311,7 +314,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <div><span>Formatting</span><strong>{label(order.formatPreset || "UNN")} • {unnFormatting ? "Times New Roman 12pt" : `${order.font || "Times New Roman"} ${order.fontSize || 12}pt`} • {order.spacing || "1.5"} spacing</strong></div>
                 <div><span>Requested output</span><strong>{order.requestedFormat || "DOCX"}</strong></div>
                 <div><span>Academic options</span><strong>{[order.citations && "Citations", order.references && "References", order.coverPage && "Cover page", order.conversionRequested && "Convert/format"].filter(Boolean).join(" • ") || "None selected"}</strong></div>
-                <div><span>Text treatment</span><strong>{order.transformationMode && order.transformationMode !== "format" ? aiActionLabel(order.transformationMode) : "Format only"}</strong></div>
+                <div><span>Text treatment</span><strong>{order.transformationMode && order.transformationMode !== "format" ? `${aiActionLabel(order.transformationMode)}${order.targetPages ? ` • target ${order.targetPages} pages` : ""}` : "Format only"}</strong></div>
                 <div><span>Paragraph layout</span><strong>{label(order.bodyAlignment || "JUSTIFIED")} • {label(order.paragraphIndentation || "FIRST-LINE")}</strong></div>
                 <div><span>Heading / pages</span><strong>{label(order.headingPreset || "ACADEMIC")} • {label(order.pageNumberPosition || "FOOTER-CENTER")}</strong></div>
                 <div><span>Advanced Word options</span><strong>{[order.automaticTableOfContents && "Contents page", referenceStyle !== "none" && label(referenceStyle), order.widowOrphanControl !== false && "Widow/orphan control"].filter(Boolean).join(" • ") || "None selected"}</strong></div>

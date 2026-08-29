@@ -6,6 +6,7 @@ import {
   DocumentTransformationError,
   parseDocumentTransformationMode,
   transformAcademicText,
+  wordsPerPageForSpacing,
 } from "@/lib/ai-document-transform";
 import {
   parseBodyAlignment,
@@ -19,6 +20,7 @@ import {
 import { attachmentContentDisposition, safeAttachmentFilename } from "@/lib/download-filename";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 type RouteContext = {
   params: Promise<{ orderNumber: string }>;
@@ -36,6 +38,7 @@ type OrderDoc = {
   spacing?: string;
   formatPreset?: string;
   pages?: number;
+  targetPages?: number | null;
   citations?: boolean;
   coverPage?: boolean;
   references?: boolean;
@@ -95,9 +98,10 @@ export async function GET(request: Request, context: RouteContext) {
       title,
       mode: transformationMode,
       instructions: order.instructions || "",
-      targetPages: order.pages || 3,
+      targetPages: order.targetPages || order.pages || 3,
       citationsRequested: Boolean(order.citations),
       referencesRequested: Boolean(order.references),
+      wordsPerPage: wordsPerPageForSpacing(order.spacing),
     });
 
     const formatPreset = parseFormatPreset(order.formatPreset);
@@ -144,6 +148,8 @@ export async function GET(request: Request, context: RouteContext) {
         "X-Text-Transformation": transformationMode,
         "X-Text-Changed": transformed.changed ? "true" : "false",
         "X-AI-Used": transformationMode === "format" ? "false" : "true",
+        ...(transformed.estimatedPages ? { "X-Estimated-Pages": String(transformed.estimatedPages) } : {}),
+        ...(transformed.targetPages ? { "X-Target-Pages": String(transformed.targetPages) } : {}),
       },
     });
   } catch (error) {

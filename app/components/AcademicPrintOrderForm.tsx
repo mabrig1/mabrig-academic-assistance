@@ -23,6 +23,7 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
   const [message, setMessage] = useState("");
   const [printOption, setPrintOption] = useState("DIGITAL_AND_PRINT");
   const [pages, setPages] = useState(1);
+  const [targetPages, setTargetPages] = useState(3);
   const [transformationMode, setTransformationMode] = useState("format");
   const [referralCode, setReferralCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -72,10 +73,13 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
     formElement.reset();
     setPrintOption("DIGITAL_AND_PRINT");
     setPages(1);
+    setTargetPages(3);
     setTransformationMode("format");
   }
 
   const humanizeMode = transformationMode === "rewrite-assignment";
+  const pageAdjustmentMode = transformationMode === "reduce-pages" || transformationMode === "expand-pages";
+  const usesTargetPages = transformationMode === "write-assignment" || pageAdjustmentMode;
 
   return <div className={compact ? "" : "card"}>
     {!compact && <>
@@ -106,7 +110,7 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
           </select>
         </label>
 
-        <label className="field"><span>Number of pages (max {MAX_PAGES})</span><input name="pages" type="number" min="1" max={MAX_PAGES} value={pages} onChange={e => setPages(Math.min(MAX_PAGES, Math.max(1, Number(e.target.value) || 1)))} required /></label>
+        <label className="field"><span>Current / printing pages (max {MAX_PAGES})</span><input name="pages" type="number" min="1" max={MAX_PAGES} value={pages} onChange={e => setPages(Math.min(MAX_PAGES, Math.max(1, Number(e.target.value) || 1)))} required /></label>
         <label className="field"><span>Copies</span><input name="copies" type="number" min="1" max="100" defaultValue="1" /></label>
 
         <label className="field"><span>Spacing</span>
@@ -121,13 +125,22 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
 
         <label className="field"><span>Font size</span><input name="fontSize" type="number" min="8" max="30" defaultValue="12" /></label>
         <label className="field"><span>Text treatment</span>
-          <select name="transformationMode" value={transformationMode} onChange={event => setTransformationMode(event.target.value)}>
+          <select name="transformationMode" value={transformationMode} onChange={event => {
+            const mode = event.target.value;
+            setTransformationMode(mode);
+            if (mode === "reduce-pages") setTargetPages(Math.max(1, pages - 1));
+            if (mode === "expand-pages") setTargetPages(Math.min(MAX_PAGES, pages + 1));
+            if (mode === "write-assignment") setTargetPages(Math.min(20, Math.max(1, pages)));
+          }}>
             <option value="format">Format only — reliable, no AI required</option>
             <option value="proofread">Proofread &amp; improve clarity (AI)</option>
             <option value="write-assignment">Write Assignment from topic &amp; instructions (AI)</option>
             <option value="rewrite-assignment">Article Rewriter &amp; Humanizer — natural rewrite (AI)</option>
+            <option value="reduce-pages">Reduce pages — condense to a target length (AI)</option>
+            <option value="expand-pages">Expand pages — develop to a target length (AI)</option>
           </select>
         </label>
+        {usesTargetPages && <label className="field"><span>{transformationMode === "write-assignment" ? "Assignment target pages (max 20)" : "Required final pages (max 100)"}</span><input name="targetPages" type="number" min="1" max={transformationMode === "write-assignment" ? 20 : MAX_PAGES} value={targetPages} onChange={event => setTargetPages(Math.min(transformationMode === "write-assignment" ? 20 : MAX_PAGES, Math.max(1, Number(event.target.value) || 1)))} required /></label>}
         <label className="field"><span>Body alignment</span>
           <select name="bodyAlignment" defaultValue="justified">
             <option value="justified">Justified (academic)</option>
@@ -184,12 +197,12 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
           <label className="field"><span>Delivery note</span><input name="deliveryNote" placeholder="Hostel, block or meeting point" /></label>
         </>}
 
-        <label className="field full"><span>{transformationMode === "write-assignment" ? "Optional source material (max 4MB)" : humanizeMode ? "Upload article or draft to rewrite (max 4MB)" : "Option 1 — Upload for conversion (max 4MB)"}</span><input name="file" type="file" accept=".txt,.md,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" /></label>
+        <label className="field full"><span>{transformationMode === "write-assignment" ? "Optional source material (max 4MB)" : humanizeMode ? "Upload article or draft to rewrite (max 4MB)" : pageAdjustmentMode ? "Upload the document to resize (max 4MB)" : "Option 1 — Upload for conversion (max 4MB)"}</span><input name="file" type="file" accept=".txt,.md,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" /></label>
         <div className="conversion-upload-note field full">⚡ Uploads are limited to 4MB. Instant text extraction for Word generation is available for pasted text, TXT/Markdown, DOCX and text-based PDFs. Complex layouts, scanned PDFs, PowerPoint and Excel may require manual printer review.</div>
 
         <div className="upload-divider field full"><span>OR</span></div>
 
-        <label className="field full"><span>{transformationMode === "write-assignment" ? "Optional notes, outline or verified source material" : humanizeMode ? "Paste the article or draft to rewrite and humanize" : "Option 2 — Paste your assignment here"}</span><textarea name="pastedContent" rows={12} maxLength={MAX_PASTED_CHARS} placeholder={transformationMode === "write-assignment" ? "Paste an outline, lecturer's guide, notes or verified sources. The AI will not invent citations or references." : humanizeMode ? "Paste the complete article, assignment or draft. The rewrite preserves facts, citations, references, quotations and meaning while improving natural flow and readability." : "Paste the full assignment or document text to format, proofread or rewrite."} /></label>
+        <label className="field full"><span>{transformationMode === "write-assignment" ? "Optional notes, outline or verified source material" : humanizeMode ? "Paste the article or draft to rewrite and humanize" : pageAdjustmentMode ? "Paste the document to resize" : "Option 2 — Paste your assignment here"}</span><textarea name="pastedContent" rows={12} maxLength={MAX_PASTED_CHARS} placeholder={transformationMode === "write-assignment" ? "Paste an outline, lecturer's guide, notes or verified sources. The AI will not invent citations or references." : humanizeMode ? "Paste the complete article, assignment or draft. The rewrite preserves facts, citations, references, quotations and meaning while improving natural flow and readability." : pageAdjustmentMode ? "Paste the complete document. Reduction removes repetition; expansion develops explanations without inventing evidence or sources." : "Paste the full assignment or document text to format, proofread or rewrite."} /></label>
 
         <div className="field full check-row">
           <input type="hidden" name="boldHeadings" value="off" />
@@ -214,9 +227,10 @@ export default function AcademicPrintOrderForm({ compact = false }: { compact?: 
       </div>
 
       {humanizeMode && <div className="notice" style={{marginTop:16}}><strong>Article Rewriter & Humanizer:</strong> rewrites sentence structure and wording for smoother, more natural reading while preserving meaning, facts, figures, quotations, citations and references. It is an editing service, not a guarantee of any AI-detector result.</div>}
+      {pageAdjustmentMode && <div className="notice" style={{marginTop:16}}><strong>Page {transformationMode === "reduce-pages" ? "Reduction" : "Expansion"}:</strong> targets the requested length using the selected font and spacing. Actual pagination can vary slightly by headings, tables, images and the version of Microsoft Word used. Facts, figures and supplied sources are protected; expansion never invents references.</div>}
       <div className="notice" style={{marginTop:16}}><strong>UNN Undergraduate Project format:</strong> Times New Roman 12pt, <strong>2.0 double spacing</strong>, justified body paragraphs, academic heading hierarchy and hanging reference entries. To use 1.0 or 1.5 spacing, choose Custom academic format.</div>
       <div className="notice" style={{marginTop:10}}>Academic integrity: AI drafts and rewrites must be reviewed, fact-checked and adapted by the student or author. The system preserves supplied evidence and does not invent citations or references.</div>
-      <button className="btn primary" style={{marginTop:16}} type="submit" disabled={submitting}>{submitting ? "Preparing conversion..." : humanizeMode ? "Rewrite, Humanize & Convert to Word" : "Submit, Format & Convert to Word"}</button>
+      <button className="btn primary" style={{marginTop:16}} type="submit" disabled={submitting}>{submitting ? "Preparing conversion..." : humanizeMode ? "Rewrite, Humanize & Convert to Word" : pageAdjustmentMode ? `${transformationMode === "reduce-pages" ? "Reduce" : "Expand"} Pages & Convert to Word` : "Submit, Format & Convert to Word"}</button>
       {message && <p className="form-message" aria-live="polite">{message}</p>}
       {message.includes("Order ") && <a className="btn whatsapp" style={{marginTop:8}} target="_blank" rel="noreferrer" href="https://wa.me/2347065342818?text=Hello%20Mabrig%20ICT%2C%20I%20have%20submitted%20an%20academic%20document%20conversion%20and%20printing%20order%20on%20the%20website.%20Please%20help%20me%20continue%20with%20the%20order.">Continue on WhatsApp</a>}
     </form>

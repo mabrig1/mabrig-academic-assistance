@@ -63,6 +63,7 @@ export async function POST(request: Request) {
     const printType: PrintType = PRINT_TYPES.includes(rawPrintType as PrintType) ? rawPrintType as PrintType : "BLACK_WHITE";
     const copies = Math.max(1, Math.min(100, Number(form.get("copies") || 1)));
     const pages = Number(form.get("pages") || 0);
+    const targetPages = Number(form.get("targetPages") || pages || 1);
     const binding: BindingType = BINDINGS.includes(rawBinding as BindingType) ? rawBinding as BindingType : "NONE";
     const deliveryLocation = String(form.get("deliveryLocation") || "").trim();
     const deliveryNote = String(form.get("deliveryNote") || "").trim();
@@ -92,14 +93,18 @@ export async function POST(request: Request) {
     const file = form.get("file");
     const hasFile = file instanceof File && file.size > 0;
     const writeAssignmentRequested = transformationMode === "write-assignment";
+    const pageAdjustmentRequested = transformationMode === "reduce-pages" || transformationMode === "expand-pages";
     const assignmentBriefReady = Boolean(writeAssignmentRequested && documentTitle && instructions);
 
     if (!name || !whatsapp || !serviceName || !instructions) return NextResponse.json({ error: "Please complete all required fields." }, { status: 400 });
     if (!Number.isInteger(pages) || pages < 1 || pages > MAX_PAGES) return NextResponse.json({ error: `Page count must be between 1 and ${MAX_PAGES} pages.` }, { status: 400 });
+    if (!Number.isInteger(targetPages) || targetPages < 1 || targetPages > MAX_PAGES) return NextResponse.json({ error: `Target page count must be between 1 and ${MAX_PAGES} pages.` }, { status: 400 });
+    if (writeAssignmentRequested && targetPages > 20) return NextResponse.json({ error: "AI-written assignments are limited to 20 target pages. Uploaded documents can be reduced or expanded up to 100 pages." }, { status: 400 });
     if (!Number.isFinite(fontSize) || fontSize < 8 || fontSize > 30) return NextResponse.json({ error: "Font size must be between 8 and 30pt." }, { status: 400 });
     if (printOption === "DIGITAL_PRINT_DELIVERY" && !deliveryLocation) return NextResponse.json({ error: "Choose a delivery location." }, { status: 400 });
     if (writeAssignmentRequested && !documentTitle) return NextResponse.json({ error: "Add the assignment topic before using Write Assignment." }, { status: 400 });
     if (!hasFile && !pastedContent && !assignmentBriefReady) return NextResponse.json({ error: "Upload a file, paste your assignment, or choose Write Assignment and provide a topic and instructions." }, { status: 400 });
+    if (pageAdjustmentRequested && !hasFile && !pastedContent) return NextResponse.json({ error: "Upload or paste the document before reducing or expanding its pages." }, { status: 400 });
     if (pastedContent.length > MAX_PASTED_CHARS) return NextResponse.json({ error: "Pasted content is too long. Keep it within the 100-page submission limit." }, { status: 413 });
 
     if (hasFile) {
@@ -152,6 +157,7 @@ export async function POST(request: Request) {
       printType,
       copies,
       pages,
+      targetPages: writeAssignmentRequested || pageAdjustmentRequested ? targetPages : null,
       binding,
       requestedFormat,
       spacing,
