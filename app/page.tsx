@@ -31,14 +31,16 @@ export default function Home() {
   }, []);
 
   return <>
-    <header className="container nav"><div className="brand">MABRIG ICT</div><div className="actions"><a className="btn secondary" href="/academic-printing">Academic Printing</a><a className="btn secondary" href="/partners">Partner Referrals</a><a className="btn secondary" href="/track">Track Order</a><a className="btn secondary" href="#order">Place an Order</a></div></header>
+    <header className="container nav"><div className="brand">MABRIG ICT</div><div className="actions"><a className="btn secondary" href="/academic-printing">Academic Printing</a><a className="btn secondary" href="/work-with-us">Work With Us</a><a className="btn secondary" href="/partners">Partner Referrals</a><a className="btn secondary" href="/track">Track Order</a><a className="btn secondary" href="#order">Place an Order</a></div></header>
     <main>
-      <section className="hero"><div className="container"><span className="badge">UNN Academic & Document Services</span><h1>Submit. Rewrite. Humanize. Format. Print.</h1><p className="lead">One platform for academic support, article rewriting and humanizing, UNN undergraduate project formatting, professional document processing, printing, binding and campus delivery.</p><div className="actions"><a className="btn primary" href="/academic-printing/order">Upload or Paste My Work</a><a className="btn secondary" href="#services">Explore Services</a><a className="btn secondary" href="/partners">Become a Partner</a></div></div></section>
+      <section className="hero"><div className="container"><span className="badge">UNN Academic & Document Services</span><h1>Submit. Rewrite. Humanize. Format. Print.</h1><p className="lead">One platform for academic support, article rewriting and humanizing, UNN undergraduate project formatting, professional document processing, printing, binding and campus delivery.</p><div className="actions"><a className="btn primary" href="/academic-printing/order">Upload or Paste My Work</a><a className="btn secondary" href="#services">Explore Services</a><a className="btn secondary" href="/work-with-us">UNN Part-Time Work</a><a className="btn secondary" href="/partners">Become a Partner</a></div></div></section>
       {referralCode && <section className="section container" style={{paddingBottom:0}}><div className="notice"><strong>Partner referral recorded.</strong> Your order will be attributed to referral code <strong>{referralCode}</strong> where eligible under the partner programme.</div></section>}
 
       <SpecialServicePoster />
 
       <section id="services" className="section container"><h2>What we deliver</h2><div className="grid">{services.map(([title, text]) => <article className="card" key={title}><h3>{title}</h3><p>{text}</p>{(title === "Academic Document Printing" || title === "Article Rewriter & Humanizer") && <a className="btn primary" href="/academic-printing/order">Use This Service</a>}</article>)}</div></section>
+
+      <section className="section container"><div className="card"><span className="badge">Student Opportunities</span><h2>UNN students: work part-time with Mabrig</h2><p>Join a screened worker pool for academic formatting, printing and production, data support, customer service, referrals and campus delivery. Flexible assignments are matched by verified skills and availability.</p><a className="btn primary" href="/work-with-us">See Roles & Recruitment Standard</a></div></section>
 
       <section id="order" className="section">
         <div className="container order">
