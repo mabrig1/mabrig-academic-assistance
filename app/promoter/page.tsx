@@ -22,6 +22,8 @@ type Summary = {
     currentMonthEligibleReferrals: number;
     previousMonthEligibleReferrals: number;
     threshold: number;
+    trackedProductClicks: number;
+    clicksByProduct: { ACADEMIC: number; FINTIGEN: number; DDEI: number };
   };
   commissions: {
     accruedUnpaid: number;
@@ -43,6 +45,7 @@ type Summary = {
     paidAt: string;
     orderCount: number;
   }>;
+  productLinks: { academic: string; fintigen: string; ddei: string };
   shareLink: string;
 };
 
@@ -58,7 +61,7 @@ export default function PromoterDashboardPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -84,24 +87,18 @@ export default function PromoterDashboardPage() {
     setMessage("");
   }
 
-  async function copyLink() {
-    if (!summary?.shareLink) return;
-    await navigator.clipboard.writeText(summary.shareLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+  async function copyLink(name: string, url: string) {
+    await navigator.clipboard.writeText(url);
+    setCopied(name);
+    setTimeout(() => setCopied(""), 1800);
   }
 
-  async function shareLink() {
-    if (!summary?.shareLink) return;
+  async function shareLink(name: string, url: string) {
     if (navigator.share) {
-      await navigator.share({
-        title: "Mabrig Academic Assistance",
-        text: "Use my Mabrig Academic Assistance referral link for academic document services:",
-        url: summary.shareLink,
-      });
+      await navigator.share({ title: name, text: `Use my ${name} referral link:`, url });
       return;
     }
-    await copyLink();
+    await copyLink(name, url);
   }
 
   return <>
@@ -109,7 +106,7 @@ export default function PromoterDashboardPage() {
       <div className="brand">MABRIG ICT</div>
       <div className="actions">
         <a className="btn secondary" href="/recruitment">Recruitment</a>
-        <a className="btn secondary" href="/partners">Partner Referrals</a>
+        <a className="btn secondary" href="/partners">Referral Links</a>
         <a className="btn secondary" href="/">Academic Assistance</a>
       </div>
     </header>
@@ -118,8 +115,8 @@ export default function PromoterDashboardPage() {
       <section className="hero">
         <div className="container" style={{maxWidth: 920}}>
           <span className="badge">Student Marketer & Campus Promoter</span>
-          <h1>Promoter Dashboard</h1>
-          <p className="lead">Check your referrals, completed eligible orders, commission progress and recorded payouts using your official referral code and WhatsApp number.</p>
+          <h1>Multi-Product Promoter Dashboard</h1>
+          <p className="lead">Use one official promoter code across Academic Assistance, Fintigen and DDEI. Check tracked product visits, eligible Academic Assistance orders, commission progress and recorded payouts.</p>
         </div>
       </section>
 
@@ -127,7 +124,7 @@ export default function PromoterDashboardPage() {
         <div className="container" style={{maxWidth: 820}}>
           <div className="card">
             <h2>Open My Dashboard</h2>
-            <p>No password is required for this first intake. Your official referral code and registered WhatsApp number must match.</p>
+            <p>Your official referral code and registered WhatsApp number must match.</p>
             <form onSubmit={submit}>
               <div className="form-grid">
                 <label className="field"><span>Official referral code</span><input name="referralCode" required placeholder="e.g. UNN-ABC12345" autoCapitalize="characters" /></label>
@@ -146,26 +143,37 @@ export default function PromoterDashboardPage() {
             <span className="badge">{summary.promoter.status}</span>
             <h2 style={{marginBottom: 6}}>{summary.promoter.name}</h2>
             <p>{summary.promoter.department} • {summary.promoter.level} Level • Code: <strong>{summary.promoter.referralCode}</strong></p>
-            <div className="notice" style={{wordBreak: "break-all"}}><strong>Your referral link</strong><br />{summary.shareLink}</div>
-            <div className="actions" style={{marginTop: 12}}>
-              <button className="btn primary" onClick={copyLink}>{copied ? "✓ Link Copied" : "Copy Referral Link"}</button>
-              <button className="btn secondary" onClick={shareLink}>Share Link</button>
-              <a className="btn secondary" href={summary.shareLink}>Open My Link</a>
-            </div>
           </div>
 
           <div className="grid" style={{marginTop: 18}}>
+            {[
+              ["Academic Assistance", summary.productLinks.academic, summary.performance.clicksByProduct.ACADEMIC],
+              ["Fintigen", summary.productLinks.fintigen, summary.performance.clicksByProduct.FINTIGEN],
+              ["DDEI", summary.productLinks.ddei, summary.performance.clicksByProduct.DDEI],
+            ].map(([name, url, clicks]) => <article className="card" key={String(name)}>
+              <span className="badge">{String(name)}</span>
+              <h2 style={{fontSize: 30}}>{Number(clicks)} tracked visit{Number(clicks) === 1 ? "" : "s"}</h2>
+              <div className="notice" style={{wordBreak: "break-all"}}>{String(url)}</div>
+              <div className="actions" style={{marginTop: 12}}>
+                <button className="btn primary" onClick={() => copyLink(String(name), String(url))}>{copied === name ? "✓ Copied" : "Copy Link"}</button>
+                <button className="btn secondary" onClick={() => shareLink(String(name), String(url))}>Share</button>
+                <a className="btn secondary" href={String(url)} target="_blank" rel="noreferrer">Open</a>
+              </div>
+            </article>)}
+          </div>
+
+          <div className="grid" style={{marginTop: 18}}>
+            <article className="card"><span className="badge">Tracked Product Visits</span><h2 style={{fontSize: 38}}>{summary.performance.trackedProductClicks}</h2><p>Combined attributed visits across all three products.</p></article>
             <article className="card"><span className="badge">Current Rate</span><h2 style={{fontSize: 38}}>{summary.promoter.currentCommissionRate}%</h2><p>Standard {summary.promoter.standardCommissionRate}% • Performance {summary.promoter.performanceCommissionRate}%</p></article>
-            <article className="card"><span className="badge">Accrued</span><h2 style={{fontSize: 34}}>{money(summary.commissions.accruedUnpaid)}</h2><p>Eligible commission not yet recorded as paid.</p></article>
+            <article className="card"><span className="badge">Accrued Commission</span><h2 style={{fontSize: 34}}>{money(summary.commissions.accruedUnpaid)}</h2><p>Eligible commission not yet recorded as paid.</p></article>
             <article className="card"><span className="badge">Paid Commission</span><h2 style={{fontSize: 34}}>{money(summary.commissions.totalRecordedPaid)}</h2><p>Total commission payouts recorded by admin.</p></article>
-            <article className="card"><span className="badge">Total Referrals</span><h2 style={{fontSize: 38}}>{summary.performance.totalReferrals}</h2><p>{summary.performance.paidReferrals} paid • {summary.performance.eligibleCompletedReferrals} eligible completed</p></article>
-            <article className="card"><span className="badge">This Month</span><h2 style={{fontSize: 38}}>{summary.performance.currentMonthEligibleReferrals}</h2><p>Eligible completed referrals this month.</p></article>
-            <article className="card"><span className="badge">Performance Target</span><h2 style={{fontSize: 38}}>{summary.performance.previousMonthEligibleReferrals}/{summary.performance.threshold}</h2><p>Previous calendar month progress used to determine the current performance rate.</p></article>
+            <article className="card"><span className="badge">Academic Orders</span><h2 style={{fontSize: 38}}>{summary.performance.totalReferrals}</h2><p>{summary.performance.paidReferrals} paid • {summary.performance.eligibleCompletedReferrals} eligible fulfilled</p></article>
+            <article className="card"><span className="badge">Performance Target</span><h2 style={{fontSize: 38}}>{summary.performance.previousMonthEligibleReferrals}/{summary.performance.threshold}</h2><p>Previous calendar month eligible completed sales used for the current rate.</p></article>
           </div>
 
           <div className="card" style={{marginTop: 18}}>
-            <h2>Recent Referrals</h2>
-            {summary.recentReferrals.length === 0 ? <p>No referrals have been recorded yet. Share your official link to begin.</p> : <div style={{overflowX: "auto"}}>
+            <h2>Recent Commissionable Academic Referrals</h2>
+            {summary.recentReferrals.length === 0 ? <p>No Academic Assistance orders have been attributed yet.</p> : <div style={{overflowX: "auto"}}>
               <table style={{width: "100%", borderCollapse: "collapse"}}>
                 <thead><tr><th style={{textAlign: "left", padding: 10}}>Order</th><th style={{textAlign: "left", padding: 10}}>Order Status</th><th style={{textAlign: "left", padding: 10}}>Payment</th><th style={{textAlign: "left", padding: 10}}>Commission</th><th style={{textAlign: "left", padding: 10}}>Payout</th></tr></thead>
                 <tbody>{summary.recentReferrals.map(referral => <tr key={referral.orderNumber}>
@@ -187,7 +195,7 @@ export default function PromoterDashboardPage() {
             </div>)}
           </div>
 
-          <div className="notice" style={{marginTop: 18}}><strong>How commission clears:</strong> the referred order must carry your official code, have a verified PAID payment, and reach a fulfilled status (READY, COLLECTED or DELIVERED). Cancelled, refunded, fraudulent, duplicate and self-referral orders remain ineligible.</div>
+          <div className="notice" style={{marginTop: 18}}><strong>Current rollout:</strong> Academic Assistance has order/payment commission settlement connected. Fintigen and DDEI now carry and report promoter-code visits; their payable conversion events will join the same commission ledger when their commercial checkout/enrolment payments are connected. A click alone is not a payable commission.</div>
         </div>
       </section>}
     </main>
