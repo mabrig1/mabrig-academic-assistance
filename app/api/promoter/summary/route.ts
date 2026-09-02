@@ -45,7 +45,6 @@ export async function POST(request: Request) {
     }
     const paidOrderNumbers = new Set<string>();
     for (const payout of ledger.payouts as any[]) for (const orderNumber of payout.orderNumbers || []) paidOrderNumbers.add(String(orderNumber));
-    const eligibleLines = ledger.lines.filter((line: any) => line.eligible);
 
     return NextResponse.json({
       ok: true,
@@ -100,7 +99,7 @@ export async function POST(request: Request) {
         fintigen: `https://www.fintigen.com/?ref=${encodeURIComponent(referralCode)}`,
         ddei: `https://ddei.online/?ref=${encodeURIComponent(referralCode)}`,
       },
-      partnerInviteLink: `https://academic.mabrigkorie.org/recruitment?ref=${encodeURIComponent(referralCode)}#partners`,
+      partnerInviteLink: `https://academic.mabrigkorie.org/recruiters-partners?ref=${encodeURIComponent(referralCode)}`,
       shareLink: `https://academic.mabrigkorie.org/?ref=${encodeURIComponent(referralCode)}`,
     });
   } catch (error) {
