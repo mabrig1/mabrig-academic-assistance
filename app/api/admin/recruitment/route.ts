@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
-import { Order, Payment } from "@/lib/models";
-import { PromoterPayout, StudentPromoterApplication } from "@/lib/partner-models";
-import { commissionForOrder, previousCalendarMonth } from "@/lib/partner-commissions";
+import { PromoterPayout, PromoterReferralEvent, StudentPromoterApplication } from "@/lib/partner-models";
+import { loadPromoterLedger } from "@/lib/promoter-ledger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,53 +18,6 @@ function payoutNumber() {
   return `PAY-${date}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
 
-async function commissionSummary(application: any) {
-  const referralCode = String(application.assignedReferralCode || "");
-  if (!referralCode) {
-    return {
-      totalReferrals: 0,
-      eligibleCompleted: 0,
-      currentCommissionRate: Number(application.standardCommissionRate || 15),
-      accruedUnpaid: 0,
-      totalPaidCommission: 0,
-      unpaidOrderNumbers: [] as string[],
-    };
-  }
-
-  const orders = await Order.find({ referralCode }).sort({ createdAt: -1 }).lean();
-  const orderIds = orders.map(order => order._id);
-  const [payments, payouts] = await Promise.all([
-    Payment.find({ orderId: { $in: orderIds } }).lean(),
-    PromoterPayout.find({ applicationNumber: application.applicationNumber, status: "PAID" }).lean(),
-  ]);
-  const paymentsByOrder = new Map(payments.map(payment => [String(payment.orderId), payment]));
-  const previousMonth = previousCalendarMonth(new Date());
-  const previousMonthEligible = orders.filter(order => {
-    const updatedAt = order.updatedAt ? new Date(order.updatedAt) : null;
-    const line = commissionForOrder(order, paymentsByOrder.get(String(order._id)), Number(application.standardCommissionRate || 15));
-    return line.eligible && updatedAt && updatedAt >= previousMonth.start && updatedAt < previousMonth.end;
-  }).length;
-
-  const currentCommissionRate = previousMonthEligible >= Number(application.performanceThreshold || 10)
-    ? Number(application.performanceCommissionRate || 20)
-    : Number(application.standardCommissionRate || 15);
-  const lines = orders.map(order => commissionForOrder(order, paymentsByOrder.get(String(order._id)), currentCommissionRate));
-  const paidOrderNumbers = new Set<string>();
-  for (const payout of payouts) for (const orderNumber of payout.orderNumbers || []) paidOrderNumbers.add(String(orderNumber));
-  const eligibleLines = lines.filter(line => line.eligible);
-  const unpaidLines = eligibleLines.filter(line => !paidOrderNumbers.has(line.orderNumber));
-
-  return {
-    totalReferrals: orders.length,
-    eligibleCompleted: eligibleLines.length,
-    previousMonthEligible,
-    currentCommissionRate,
-    accruedUnpaid: Math.round(unpaidLines.reduce((sum, line) => sum + line.commissionAmount, 0) * 100) / 100,
-    totalPaidCommission: Math.round(payouts.reduce((sum, payout) => sum + Number(payout.amount || 0), 0) * 100) / 100,
-    unpaidOrderNumbers: unpaidLines.map(line => line.orderNumber),
-  };
-}
-
 export async function GET() {
   try {
     await connectMongoDB();
@@ -73,7 +25,7 @@ export async function GET() {
     const enriched = await Promise.all(applications.map(async application => ({
       ...application.toObject(),
       _id: String(application._id),
-      commissionSummary: await commissionSummary(application),
+      commissionSummary: await loadPromoterLedger(application),
     })));
 
     return NextResponse.json({ ok: true, applications: enriched });
@@ -98,21 +50,34 @@ export async function PATCH(request: Request) {
       if (application.status !== "APPROVED" || !application.assignedReferralCode) {
         return NextResponse.json({ error: "Only approved promoters with an official referral code can receive commission payouts." }, { status: 400 });
       }
-      const summary = await commissionSummary(application);
-      if (summary.accruedUnpaid <= 0 || summary.unpaidOrderNumbers.length === 0) {
+      const summary = await loadPromoterLedger(application);
+      if (summary.accruedUnpaid <= 0 || (summary.unpaidOrderNumbers.length === 0 && summary.unpaidExternalReferences.length === 0)) {
         return NextResponse.json({ error: "There is no cleared unpaid commission for this promoter." }, { status: 400 });
       }
+      const number = payoutNumber();
       const payout = await PromoterPayout.create({
-        payoutNumber: payoutNumber(),
+        payoutNumber: number,
         applicationNumber: application.applicationNumber,
         referralCode: application.assignedReferralCode,
         orderNumbers: summary.unpaidOrderNumbers,
+        externalReferences: summary.unpaidExternalReferences,
         amount: summary.accruedUnpaid,
         commissionRate: summary.currentCommissionRate,
         status: "PAID",
         paidAt: new Date(),
-        note: String(body?.note || "Weekly promoter commission payout recorded by admin.").trim().slice(0, 500),
+        note: String(body?.note || "Weekly multi-product promoter commission payout recorded by admin.").trim().slice(0, 500),
       });
+      if (summary.unpaidExternalReferences.length) {
+        await PromoterReferralEvent.updateMany(
+          {
+            referralCode: application.assignedReferralCode,
+            eventType: "PURCHASE",
+            externalReference: { $in: summary.unpaidExternalReferences },
+            payoutNumber: null,
+          },
+          { $set: { payoutNumber: number } },
+        );
+      }
       return NextResponse.json({
         ok: true,
         payout: {
@@ -121,6 +86,7 @@ export async function PATCH(request: Request) {
           currency: payout.currency,
           commissionRate: payout.commissionRate,
           orderCount: payout.orderNumbers.length,
+          externalPurchaseCount: payout.externalReferences.length,
           paidAt: payout.paidAt,
         },
       });

@@ -23,6 +23,7 @@ const promoterPayoutSchema = new Schema({
   applicationNumber: { type: String, required: true, index: true },
   referralCode: { type: String, required: true, index: true },
   orderNumbers: [{ type: String, required: true }],
+  externalReferences: [{ type: String, required: true }],
   amount: { type: Number, required: true, min: 0 },
   currency: { type: String, default: "NGN" },
   commissionRate: { type: Number, required: true, min: 0, max: 100 },
@@ -31,23 +32,30 @@ const promoterPayoutSchema = new Schema({
   note: { type: String, default: null, maxlength: 500 },
 }, { timestamps: true });
 
-promoterPayoutSchema.index({ orderNumbers: 1 }, { unique: true });
+promoterPayoutSchema.index({ orderNumbers: 1 }, { unique: true, sparse: true });
 
 const promoterReferralEventSchema = new Schema({
   referralCode: { type: String, required: true, index: true, maxlength: 64 },
   product: { type: String, enum: ["ACADEMIC", "FINTIGEN", "DDEI"], required: true, index: true },
   eventType: { type: String, enum: ["CLICK", "LEAD", "PURCHASE"], default: "CLICK", index: true },
-  sessionId: { type: String, required: true, maxlength: 96, index: true },
+  sessionId: { type: String, required: true, maxlength: 160, index: true },
+  externalReference: { type: String, default: null, maxlength: 160, index: true },
   page: { type: String, default: null, maxlength: 300 },
   sourceHost: { type: String, default: null, maxlength: 160 },
+  label: { type: String, default: null, maxlength: 240 },
   value: { type: Number, default: null, min: 0 },
   currency: { type: String, default: "NGN", maxlength: 8 },
+  paidAt: { type: Date, default: null },
+  payoutNumber: { type: String, default: null, index: true, maxlength: 80 },
 }, { timestamps: true });
 
-// Avoid repeatedly counting refreshes of the same product page in one browser session.
 promoterReferralEventSchema.index(
   { referralCode: 1, product: 1, eventType: 1, sessionId: 1 },
   { unique: true },
+);
+promoterReferralEventSchema.index(
+  { product: 1, externalReference: 1 },
+  { unique: true, sparse: true },
 );
 
 export const StudentPromoterApplication =
