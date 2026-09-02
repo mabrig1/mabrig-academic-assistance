@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
-import { PromoterReferralEvent, StudentPromoterApplication } from "@/lib/partner-models";
+import { PromotionSubmission, PromoterReferralEvent, StudentPromoterApplication } from "@/lib/partner-models";
 import { loadPromoterLedger } from "@/lib/promoter-ledger";
 
 export const runtime = "nodejs";
@@ -28,9 +28,10 @@ export async function POST(request: Request) {
     if (!promoter) return NextResponse.json({ error: "We could not match that promoter code and WhatsApp number." }, { status: 404 });
     if (promoter.status !== "APPROVED") return NextResponse.json({ error: `Your promoter account is ${String(promoter.status).toLowerCase()}.` }, { status: 403 });
 
-    const [ledger, referralEvents] = await Promise.all([
+    const [ledger, referralEvents, promotions] = await Promise.all([
       loadPromoterLedger(promoter),
       PromoterReferralEvent.find({ referralCode, eventType: "CLICK" }).sort({ createdAt: -1 }).limit(500).lean(),
+      PromotionSubmission.find({ referralCode }).sort({ createdAt: -1 }).limit(100).lean(),
     ]);
 
     const clicksByProduct = { ACADEMIC: 0, FINTIGEN: 0, DDEI: 0 };
@@ -45,6 +46,13 @@ export async function POST(request: Request) {
     }
     const paidOrderNumbers = new Set<string>();
     for (const payout of ledger.payouts as any[]) for (const orderNumber of payout.orderNumbers || []) paidOrderNumbers.add(String(orderNumber));
+
+    const approvedPromotionPay = promotions
+      .filter((item: any) => item.status === "APPROVED")
+      .reduce((sum: number, item: any) => sum + Number(item.approvedAmount || 0), 0);
+    const paidPromotionPay = promotions
+      .filter((item: any) => item.status === "PAID")
+      .reduce((sum: number, item: any) => sum + Number(item.approvedAmount || 0), 0);
 
     return NextResponse.json({
       ok: true,
@@ -77,6 +85,24 @@ export async function POST(request: Request) {
         totalRecordedPaid: ledger.totalPaidCommission,
         currency: "NGN",
       },
+      promotionPay: {
+        submissions: promotions.length,
+        awaitingReview: promotions.filter((item: any) => item.status === "SUBMITTED").length,
+        approvedUnpaid: approvedPromotionPay,
+        totalPaid: paidPromotionPay,
+        currency: "NGN",
+      },
+      recentPromotions: promotions.slice(0, 12).map((item: any) => ({
+        submissionNumber: item.submissionNumber,
+        product: item.product,
+        channel: item.channel,
+        proofUrl: item.proofUrl,
+        status: item.status,
+        approvedAmount: Number(item.approvedAmount || 0),
+        createdAt: item.createdAt,
+        paidAt: item.paidAt,
+        adminNote: item.adminNote || null,
+      })),
       recentReferrals: ledger.lines.slice(0, 12).map((line: any) => ({
         orderNumber: line.orderNumber,
         orderStatus: line.orderStatus,
