@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
 import { Order, Payment } from "@/lib/models";
-import { PromoterPayout, StudentPromoterApplication } from "@/lib/partner-models";
+import { PromoterPayout, PromoterReferralEvent, StudentPromoterApplication } from "@/lib/partner-models";
 import { commissionForOrder, previousCalendarMonth, startOfCalendarMonth } from "@/lib/partner-commissions";
 
 export const runtime = "nodejs";
@@ -31,9 +31,10 @@ export async function POST(request: Request) {
 
     const orders = await Order.find({ referralCode }).sort({ createdAt: -1 }).lean();
     const orderIds = orders.map(order => order._id);
-    const [payments, payouts] = await Promise.all([
+    const [payments, payouts, referralEvents] = await Promise.all([
       Payment.find({ orderId: { $in: orderIds } }).lean(),
       PromoterPayout.find({ applicationNumber: promoter.applicationNumber, status: "PAID" }).sort({ paidAt: -1 }).lean(),
+      PromoterReferralEvent.find({ referralCode, eventType: "CLICK" }).sort({ createdAt: -1 }).limit(500).lean(),
     ]);
 
     const paymentsByOrder = new Map(payments.map(payment => [String(payment.orderId), payment]));
@@ -63,6 +64,12 @@ export async function POST(request: Request) {
       return line.eligible && updatedAt && updatedAt >= currentMonthStart;
     }).length;
 
+    const clicksByProduct = { ACADEMIC: 0, FINTIGEN: 0, DDEI: 0 };
+    for (const event of referralEvents) {
+      const product = String(event.product || "").toUpperCase() as keyof typeof clicksByProduct;
+      if (product in clicksByProduct) clicksByProduct[product] += 1;
+    }
+
     return NextResponse.json({
       ok: true,
       promoter: {
@@ -84,6 +91,8 @@ export async function POST(request: Request) {
         currentMonthEligibleReferrals: currentMonthEligible,
         previousMonthEligibleReferrals: fulfilledPreviousMonth,
         threshold: Number(promoter.performanceThreshold || 10),
+        trackedProductClicks: referralEvents.length,
+        clicksByProduct,
       },
       commissions: {
         accruedUnpaid: Math.round(unpaidLines.reduce((sum, line) => sum + line.commissionAmount, 0) * 100) / 100,
@@ -105,6 +114,11 @@ export async function POST(request: Request) {
         paidAt: payout.paidAt,
         orderCount: (payout.orderNumbers || []).length,
       })),
+      productLinks: {
+        academic: `https://academic.mabrigkorie.org/?ref=${encodeURIComponent(referralCode)}`,
+        fintigen: `https://www.fintigen.com/?ref=${encodeURIComponent(referralCode)}`,
+        ddei: `https://ddei.online/?ref=${encodeURIComponent(referralCode)}`,
+      },
       shareLink: `https://academic.mabrigkorie.org/?ref=${encodeURIComponent(referralCode)}`,
     });
   } catch (error) {
