@@ -31,9 +31,9 @@ export default function Home() {
   }, []);
 
   return <>
-    <header className="container nav"><div className="brand">MABRIG ICT</div><div className="actions"><a className="btn secondary" href="/academic-printing">Academic Printing</a><a className="btn primary" href="/recruitment">Earn While You Learn</a><a className="btn secondary" href="/partners">Partner Referrals</a><a className="btn secondary" href="/track">Track Order</a><a className="btn secondary" href="#order">Place an Order</a></div></header>
+    <header className="container nav"><div className="brand">MABRIG ICT</div><div className="actions"><a className="btn secondary" href="/academic-printing">Academic Printing</a><a className="btn primary" href="/join">Opportunities</a><a className="btn secondary" href="/recruitment">Paid Promoter Programme</a><a className="btn secondary" href="/partners">Referral Links</a><a className="btn secondary" href="/track">Track Order</a><a className="btn secondary" href="#order">Place an Order</a></div></header>
     <main>
-      <section className="hero"><div className="container"><span className="badge">UNN Academic & Document Services</span><h1>Submit. Rewrite. Humanize. Format. Print.</h1><p className="lead">One platform for academic support, article rewriting and humanizing, UNN undergraduate project formatting, professional document processing, printing, binding and campus delivery.</p><div className="actions"><a className="btn primary" href="/academic-printing/order">Upload or Paste My Work</a><a className="btn secondary" href="#services">Explore Services</a><a className="btn secondary" href="/recruitment">Join UNN Student Promoters</a></div></div></section>
+      <section className="hero"><div className="container"><span className="badge">UNN Academic & Document Services</span><h1>Submit. Rewrite. Humanize. Format. Print.</h1><p className="lead">One platform for academic support, article rewriting and humanizing, UNN undergraduate project formatting, professional document processing, printing, binding and campus delivery.</p><div className="actions"><a className="btn primary" href="/academic-printing/order">Upload or Paste My Work</a><a className="btn secondary" href="#services">Explore Services</a><a className="btn secondary" href="/join">View Mabrig Opportunities</a></div></div></section>
       {referralCode && <section className="section container" style={{paddingBottom:0}}><div className="notice"><strong>Partner referral recorded.</strong> Your order will be attributed to referral code <strong>{referralCode}</strong> where eligible under the partner programme.</div></section>}
 
       <SpecialServicePoster />
@@ -42,10 +42,11 @@ export default function Home() {
         <div className="card" style={{textAlign: "center"}}>
           <span className="badge">First Intake: UNN Students</span>
           <h2>Earn While You Learn</h2>
-          <p className="lead">We are recruiting UNN student marketers and campus promoters on commission. Register with a short form, receive an official referral code after approval, and earn from eligible completed orders you refer.</p>
+          <p className="lead">We are recruiting UNN student marketers and campus promoters with two independent earning streams: approved promotion pay and referral conversion commission. One qualifying campaign can earn both.</p>
           <div className="actions" style={{justifyContent: "center"}}>
-            <a className="btn primary" href="/recruitment">See Commission & Register</a>
-            <a className="btn secondary" href="/partners">Existing Promoter: Create Referral Link</a>
+            <a className="btn primary" href="/recruitment">See Earnings & Register</a>
+            <a className="btn secondary" href="/promoter/promotions">Promotion Pay Center</a>
+            <a className="btn secondary" href="/partners">Existing Promoter: Referral Links</a>
           </div>
         </div>
       </section>
