@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectMongoDB } from "@/lib/mongodb";
-import { Order, Payment } from "@/lib/models";
-import { PromoterPayout, PromoterReferralEvent, StudentPromoterApplication } from "@/lib/partner-models";
-import { commissionForOrder, previousCalendarMonth, startOfCalendarMonth } from "@/lib/partner-commissions";
+import { PromoterReferralEvent, StudentPromoterApplication } from "@/lib/partner-models";
+import { loadPromoterLedger } from "@/lib/promoter-ledger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,46 +28,24 @@ export async function POST(request: Request) {
     if (!promoter) return NextResponse.json({ error: "We could not match that promoter code and WhatsApp number." }, { status: 404 });
     if (promoter.status !== "APPROVED") return NextResponse.json({ error: `Your promoter account is ${String(promoter.status).toLowerCase()}.` }, { status: 403 });
 
-    const orders = await Order.find({ referralCode }).sort({ createdAt: -1 }).lean();
-    const orderIds = orders.map(order => order._id);
-    const [payments, payouts, referralEvents] = await Promise.all([
-      Payment.find({ orderId: { $in: orderIds } }).lean(),
-      PromoterPayout.find({ applicationNumber: promoter.applicationNumber, status: "PAID" }).sort({ paidAt: -1 }).lean(),
+    const [ledger, referralEvents] = await Promise.all([
+      loadPromoterLedger(promoter),
       PromoterReferralEvent.find({ referralCode, eventType: "CLICK" }).sort({ createdAt: -1 }).limit(500).lean(),
     ]);
-
-    const paymentsByOrder = new Map(payments.map(payment => [String(payment.orderId), payment]));
-    const now = new Date();
-    const currentMonthStart = startOfCalendarMonth(now);
-    const previousMonth = previousCalendarMonth(now);
-
-    const fulfilledPreviousMonth = orders.filter(order => {
-      const updatedAt = order.updatedAt ? new Date(order.updatedAt) : null;
-      const line = commissionForOrder(order, paymentsByOrder.get(String(order._id)), promoter.standardCommissionRate);
-      return line.eligible && updatedAt && updatedAt >= previousMonth.start && updatedAt < previousMonth.end;
-    }).length;
-
-    const currentRate = fulfilledPreviousMonth >= Number(promoter.performanceThreshold || 10)
-      ? Number(promoter.performanceCommissionRate || 20)
-      : Number(promoter.standardCommissionRate || 15);
-
-    const lines = orders.map(order => commissionForOrder(order, paymentsByOrder.get(String(order._id)), currentRate));
-    const paidOrderNumbers = new Set<string>();
-    for (const payout of payouts) for (const orderNumber of payout.orderNumbers || []) paidOrderNumbers.add(String(orderNumber));
-
-    const eligibleLines = lines.filter(line => line.eligible);
-    const unpaidLines = eligibleLines.filter(line => !paidOrderNumbers.has(line.orderNumber));
-    const currentMonthEligible = orders.filter(order => {
-      const updatedAt = order.updatedAt ? new Date(order.updatedAt) : null;
-      const line = commissionForOrder(order, paymentsByOrder.get(String(order._id)), currentRate);
-      return line.eligible && updatedAt && updatedAt >= currentMonthStart;
-    }).length;
 
     const clicksByProduct = { ACADEMIC: 0, FINTIGEN: 0, DDEI: 0 };
     for (const event of referralEvents) {
       const product = String(event.product || "").toUpperCase() as keyof typeof clicksByProduct;
       if (product in clicksByProduct) clicksByProduct[product] += 1;
     }
+    const purchasesByProduct = { FINTIGEN: 0, DDEI: 0 };
+    for (const purchase of ledger.externalPurchases) {
+      const product = String(purchase.product || "").toUpperCase() as keyof typeof purchasesByProduct;
+      if (product in purchasesByProduct) purchasesByProduct[product] += 1;
+    }
+    const paidOrderNumbers = new Set<string>();
+    for (const payout of ledger.payouts as any[]) for (const orderNumber of payout.orderNumbers || []) paidOrderNumbers.add(String(orderNumber));
+    const eligibleLines = ledger.lines.filter((line: any) => line.eligible);
 
     return NextResponse.json({
       ok: true,
@@ -82,24 +59,26 @@ export async function POST(request: Request) {
         standardCommissionRate: promoter.standardCommissionRate,
         performanceCommissionRate: promoter.performanceCommissionRate,
         performanceThreshold: promoter.performanceThreshold,
-        currentCommissionRate: currentRate,
+        currentCommissionRate: ledger.currentCommissionRate,
       },
       performance: {
-        totalReferrals: orders.length,
-        paidReferrals: lines.filter(line => line.paymentStatus === "PAID").length,
-        eligibleCompletedReferrals: eligibleLines.length,
-        currentMonthEligibleReferrals: currentMonthEligible,
-        previousMonthEligibleReferrals: fulfilledPreviousMonth,
-        threshold: Number(promoter.performanceThreshold || 10),
+        totalReferrals: ledger.totalAcademicReferrals,
+        paidReferrals: ledger.paidAcademicReferrals,
+        eligibleCompletedReferrals: ledger.eligibleAcademicReferrals,
+        currentMonthEligibleReferrals: ledger.currentMonthEligible,
+        previousMonthEligibleReferrals: ledger.previousMonthEligible,
+        threshold: ledger.threshold,
         trackedProductClicks: referralEvents.length,
         clicksByProduct,
+        verifiedExternalPurchases: ledger.externalPurchases.length,
+        purchasesByProduct,
       },
       commissions: {
-        accruedUnpaid: Math.round(unpaidLines.reduce((sum, line) => sum + line.commissionAmount, 0) * 100) / 100,
-        totalRecordedPaid: Math.round(payouts.reduce((sum, payout) => sum + Number(payout.amount || 0), 0) * 100) / 100,
+        accruedUnpaid: ledger.accruedUnpaid,
+        totalRecordedPaid: ledger.totalPaidCommission,
         currency: "NGN",
       },
-      recentReferrals: lines.slice(0, 12).map(line => ({
+      recentReferrals: ledger.lines.slice(0, 12).map((line: any) => ({
         orderNumber: line.orderNumber,
         orderStatus: line.orderStatus,
         paymentStatus: line.paymentStatus,
@@ -107,18 +86,21 @@ export async function POST(request: Request) {
         commissionAmount: line.eligible ? line.commissionAmount : 0,
         payoutStatus: paidOrderNumbers.has(line.orderNumber) ? "PAID" : line.eligible ? "ACCRUED" : "PENDING",
       })),
-      recentPayouts: payouts.slice(0, 8).map(payout => ({
+      recentExternalPurchases: ledger.externalPurchases.slice(0, 12),
+      recentPayouts: (ledger.payouts as any[]).slice(0, 8).map(payout => ({
         payoutNumber: payout.payoutNumber,
         amount: payout.amount,
         currency: payout.currency,
         paidAt: payout.paidAt,
         orderCount: (payout.orderNumbers || []).length,
+        externalPurchaseCount: (payout.externalReferences || []).length,
       })),
       productLinks: {
         academic: `https://academic.mabrigkorie.org/?ref=${encodeURIComponent(referralCode)}`,
         fintigen: `https://www.fintigen.com/?ref=${encodeURIComponent(referralCode)}`,
         ddei: `https://ddei.online/?ref=${encodeURIComponent(referralCode)}`,
       },
+      partnerInviteLink: `https://academic.mabrigkorie.org/recruitment?ref=${encodeURIComponent(referralCode)}#partners`,
       shareLink: `https://academic.mabrigkorie.org/?ref=${encodeURIComponent(referralCode)}`,
     });
   } catch (error) {
