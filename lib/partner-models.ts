@@ -58,6 +58,22 @@ promoterReferralEventSchema.index(
   { unique: true, sparse: true },
 );
 
+const promotionSubmissionSchema = new Schema({
+  submissionNumber: { type: String, required: true, unique: true, index: true },
+  applicationNumber: { type: String, required: true, index: true },
+  referralCode: { type: String, required: true, index: true, maxlength: 64 },
+  product: { type: String, enum: ["ACADEMIC", "FINTIGEN", "DDEI", "NETWORK"], required: true, index: true },
+  channel: { type: String, enum: ["WHATSAPP", "FACEBOOK", "INSTAGRAM", "TIKTOK", "X", "LINKEDIN", "CAMPUS", "EVENT", "OTHER"], required: true, index: true },
+  proofUrl: { type: String, required: true, trim: true, maxlength: 600 },
+  note: { type: String, default: null, trim: true, maxlength: 800 },
+  status: { type: String, enum: ["SUBMITTED", "APPROVED", "REJECTED", "PAID"], default: "SUBMITTED", index: true },
+  approvedAmount: { type: Number, default: 0, min: 0 },
+  currency: { type: String, default: "NGN", maxlength: 8 },
+  reviewedAt: { type: Date, default: null },
+  paidAt: { type: Date, default: null },
+  adminNote: { type: String, default: null, trim: true, maxlength: 800 },
+}, { timestamps: true });
+
 const partnerLeadSchema = new Schema({
   leadNumber: { type: String, required: true, unique: true, index: true },
   contactName: { type: String, required: true, trim: true, maxlength: 120 },
@@ -87,6 +103,10 @@ export const PromoterPayout =
 export const PromoterReferralEvent =
   models.MabrigPromoterReferralEvent ||
   model("MabrigPromoterReferralEvent", promoterReferralEventSchema);
+
+export const PromotionSubmission =
+  models.MabrigPromotionSubmission ||
+  model("MabrigPromotionSubmission", promotionSubmissionSchema);
 
 export const PartnerLead =
   models.MabrigPartnerLead ||
