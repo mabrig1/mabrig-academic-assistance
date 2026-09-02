@@ -31,6 +31,7 @@ export default function PartnersPage() {
     <div className="actions">
       <a className="btn secondary" href="/">← Academic Assistance</a>
       <a className="btn primary" href="/promoter">My Promoter Dashboard</a>
+      <a className="btn secondary" href="/promoter/promotions">Promotion Pay</a>
       <a className="btn secondary" href="/recruitment">Recruitment</a>
     </div>
 
@@ -58,17 +59,21 @@ export default function PartnersPage() {
       </div>
 
       <div className="card" style={{marginTop:24,background:"#f5f8f6"}}>
-        <h3>How the network works</h3>
-        <p><strong>1.</strong> Register once and wait for approval.</p>
-        <p><strong>2.</strong> Use only your official assigned promoter code.</p>
-        <p><strong>3.</strong> Match the right product to the right audience: academic support, career/digital training, or beginner skills training.</p>
-        <p><strong>4.</strong> Fintigen and DDEI now preserve and report promoter-code visits back to the shared dashboard.</p>
-        <p><strong>5.</strong> Academic Assistance currently has paid-order commission settlement connected; other products become payable when their commercial checkout conversion is connected.</p>
-        <p style={{marginBottom:0}}><strong>6.</strong> Use the Promoter Dashboard to monitor tracked visits, eligible orders, accrued commission and payouts.</p>
+        <h3>Two Ways You Can Be Paid</h3>
+        <p><strong>1. Promotion pay:</strong> complete approved promotional work, submit proof, and receive the amount approved for that activity.</p>
+        <p><strong>2. Referral conversion commission:</strong> earn commission when your official referral link produces an eligible verified paid sale.</p>
+        <p><strong>3.</strong> The two earnings are separate. One promotion can earn both when the promotional work is approved and it also generates an eligible sale.</p>
+        <p><strong>4.</strong> Academic Assistance, Fintigen and DDEI preserve promoter attribution across the connected conversion flows.</p>
+        <p style={{marginBottom:0}}><strong>5.</strong> Use the Promotion Pay Center for proof submissions and the Promoter Dashboard for conversion commission and overall performance.</p>
+      </div>
+
+      <div className="actions" style={{marginTop:16}}>
+        <a className="btn primary" href="/promoter/promotions">Submit Promotion Proof</a>
+        <a className="btn secondary" href="/promoter">View Conversion Commission</a>
       </div>
 
       <div className="notice" style={{marginTop:16}}>
-        <strong>Important:</strong> A visit or click is attribution evidence, not automatically a commission. Commission is earned only from eligible commissionable paid transactions under the programme rules.
+        <strong>Important:</strong> a click is not referral commission, and a post is not automatically promotion pay. Promotion pay requires approved proof; conversion commission requires an eligible verified paid transaction.
       </div>
     </div>
   </div></main>;
