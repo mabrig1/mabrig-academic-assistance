@@ -18,6 +18,23 @@ const studentPromoterApplicationSchema = new Schema({
   approvedAt: { type: Date, default: null },
 }, { timestamps: true });
 
+const promoterPayoutSchema = new Schema({
+  payoutNumber: { type: String, required: true, unique: true, index: true },
+  applicationNumber: { type: String, required: true, index: true },
+  referralCode: { type: String, required: true, index: true },
+  orderNumbers: [{ type: String, required: true }],
+  amount: { type: Number, required: true, min: 0 },
+  currency: { type: String, default: "NGN" },
+  commissionRate: { type: Number, required: true, min: 0, max: 100 },
+  status: { type: String, enum: ["PAID", "VOID"], default: "PAID", index: true },
+  paidAt: { type: Date, default: Date.now },
+  note: { type: String, default: null, maxlength: 500 },
+}, { timestamps: true });
+
 export const StudentPromoterApplication =
   models.MabrigStudentPromoterApplication ||
   model("MabrigStudentPromoterApplication", studentPromoterApplicationSchema);
+
+export const PromoterPayout =
+  models.MabrigPromoterPayout ||
+  model("MabrigPromoterPayout", promoterPayoutSchema);
