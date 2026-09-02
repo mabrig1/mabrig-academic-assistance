@@ -29,12 +29,17 @@ export default function PartnersPage() {
 
   return <main className="section"><div className="container" style={{maxWidth:800}}>
     <a className="btn secondary" href="/">← Back to Academic Assistance</a>
+
+    <div className="notice" style={{marginTop:18}}>
+      <strong>Not yet an approved promoter?</strong> Our first intake is open to UNN students. <a href="/recruitment"><strong>See the commission programme and register here →</strong></a>
+    </div>
+
     <div className="card" style={{marginTop:18}}>
       <span className="badge">Mabrig Academic Partners Network</span>
       <h1 style={{fontSize:"clamp(34px,6vw,58px)"}}>Create Your Referral Link</h1>
-      <p className="lead">Give students your personal referral link. When an eligible customer opens the link and places an order, the referral code is carried into the order for attribution.</p>
+      <p className="lead">Approved promoters can enter the official referral code assigned by Mabrig Academic Assistance. When an eligible customer opens the link and places an order, the referral code is carried into the order for attribution.</p>
 
-      <label className="field" style={{marginTop:20}}><span>Partner / Referral Code</span><input value={code} onChange={e => setCode(e.target.value)} placeholder="e.g. MABRIG001" autoCapitalize="characters" /></label>
+      <label className="field" style={{marginTop:20}}><span>Your Assigned Partner / Referral Code</span><input value={code} onChange={e => setCode(e.target.value)} placeholder="e.g. UNN-ABC12345" autoCapitalize="characters" /></label>
 
       <div className="notice" style={{marginTop:16,wordBreak:"break-all"}}>
         <strong>Your referral link</strong><br />
@@ -49,15 +54,15 @@ export default function PartnersPage() {
 
       <div className="card" style={{marginTop:24,background:"#f5f8f6"}}>
         <h3>How it works</h3>
-        <p><strong>1.</strong> Give your referral link to a student.</p>
-        <p><strong>2.</strong> The student opens the link and the referral code is remembered during the session.</p>
-        <p><strong>3.</strong> The student places an order through the official platform.</p>
-        <p><strong>4.</strong> The order stores the referral code for eligible commission attribution.</p>
-        <p style={{marginBottom:0}}><strong>5.</strong> Commissions are payable only on eligible, confirmed and completed orders under the partner programme terms.</p>
+        <p><strong>1.</strong> Register for the promoter programme and wait for approval.</p>
+        <p><strong>2.</strong> Use only the official referral code assigned to you.</p>
+        <p><strong>3.</strong> Give your referral link to an interested student or client.</p>
+        <p><strong>4.</strong> The student opens the link and the referral code is remembered during the session.</p>
+        <p><strong>5.</strong> Eligible paid and completed orders are attributed to your code for commission.</p>
       </div>
 
       <div className="notice" style={{marginTop:16}}>
-        <strong>Important:</strong> Use only the referral code assigned to you by the Mabrig Academic Partners programme. Do not impersonate another partner or create misleading referral claims.
+        <strong>Important:</strong> Do not invent referral codes, impersonate another partner, misrepresent services, or make misleading commission claims. Commission applies only under the approved partner programme terms.
       </div>
     </div>
   </div></main>;
