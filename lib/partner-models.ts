@@ -31,9 +31,24 @@ const promoterPayoutSchema = new Schema({
   note: { type: String, default: null, maxlength: 500 },
 }, { timestamps: true });
 
-// A referred order can only belong to one recorded payout. This prevents
-// accidental double settlement if an admin action is retried or duplicated.
 promoterPayoutSchema.index({ orderNumbers: 1 }, { unique: true });
+
+const promoterReferralEventSchema = new Schema({
+  referralCode: { type: String, required: true, index: true, maxlength: 64 },
+  product: { type: String, enum: ["ACADEMIC", "FINTIGEN", "DDEI"], required: true, index: true },
+  eventType: { type: String, enum: ["CLICK", "LEAD", "PURCHASE"], default: "CLICK", index: true },
+  sessionId: { type: String, required: true, maxlength: 96, index: true },
+  page: { type: String, default: null, maxlength: 300 },
+  sourceHost: { type: String, default: null, maxlength: 160 },
+  value: { type: Number, default: null, min: 0 },
+  currency: { type: String, default: "NGN", maxlength: 8 },
+}, { timestamps: true });
+
+// Avoid repeatedly counting refreshes of the same product page in one browser session.
+promoterReferralEventSchema.index(
+  { referralCode: 1, product: 1, eventType: 1, sessionId: 1 },
+  { unique: true },
+);
 
 export const StudentPromoterApplication =
   models.MabrigStudentPromoterApplication ||
@@ -42,3 +57,7 @@ export const StudentPromoterApplication =
 export const PromoterPayout =
   models.MabrigPromoterPayout ||
   model("MabrigPromoterPayout", promoterPayoutSchema);
+
+export const PromoterReferralEvent =
+  models.MabrigPromoterReferralEvent ||
+  model("MabrigPromoterReferralEvent", promoterReferralEventSchema);
