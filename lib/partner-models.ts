@@ -31,6 +31,10 @@ const promoterPayoutSchema = new Schema({
   note: { type: String, default: null, maxlength: 500 },
 }, { timestamps: true });
 
+// A referred order can only belong to one recorded payout. This prevents
+// accidental double settlement if an admin action is retried or duplicated.
+promoterPayoutSchema.index({ orderNumbers: 1 }, { unique: true });
+
 export const StudentPromoterApplication =
   models.MabrigStudentPromoterApplication ||
   model("MabrigStudentPromoterApplication", studentPromoterApplicationSchema);
