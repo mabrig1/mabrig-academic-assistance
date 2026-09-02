@@ -58,6 +58,24 @@ promoterReferralEventSchema.index(
   { unique: true, sparse: true },
 );
 
+const partnerLeadSchema = new Schema({
+  leadNumber: { type: String, required: true, unique: true, index: true },
+  contactName: { type: String, required: true, trim: true, maxlength: 120 },
+  organisation: { type: String, required: true, trim: true, maxlength: 180 },
+  email: { type: String, default: null, trim: true, lowercase: true, maxlength: 180 },
+  whatsapp: { type: String, default: null, trim: true, maxlength: 40 },
+  interestType: {
+    type: String,
+    enum: ["RECRUIT_TALENT", "INTERNSHIPS", "SPONSORSHIP", "CAMPUS_PARTNERSHIP", "TRAINING_PARTNERSHIP", "TECH_PARTNERSHIP", "OTHER"],
+    required: true,
+    index: true,
+  },
+  message: { type: String, default: null, trim: true, maxlength: 1800 },
+  referralCode: { type: String, default: null, trim: true, uppercase: true, maxlength: 64, index: true },
+  status: { type: String, enum: ["NEW", "CONTACTED", "QUALIFIED", "CLOSED"], default: "NEW", index: true },
+  source: { type: String, default: "RECRUITERS_PARTNERS_PAGE" },
+}, { timestamps: true });
+
 export const StudentPromoterApplication =
   models.MabrigStudentPromoterApplication ||
   model("MabrigStudentPromoterApplication", studentPromoterApplicationSchema);
@@ -69,3 +87,7 @@ export const PromoterPayout =
 export const PromoterReferralEvent =
   models.MabrigPromoterReferralEvent ||
   model("MabrigPromoterReferralEvent", promoterReferralEventSchema);
+
+export const PartnerLead =
+  models.MabrigPartnerLead ||
+  model("MabrigPartnerLead", partnerLeadSchema);
