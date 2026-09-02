@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
     await connectMongoDB();
 
-    const existing = await StudentPromoterApplication.findOne({ whatsapp }).lean();
+    const existing = await StudentPromoterApplication.findOne({ whatsapp });
     if (existing) {
       return NextResponse.json({
         ok: true,
