@@ -28,7 +28,10 @@ export default function PartnersPage() {
   }
 
   return <main className="section"><div className="container" style={{maxWidth:800}}>
-    <a className="btn secondary" href="/">← Back to Academic Assistance</a>
+    <div className="actions">
+      <a className="btn secondary" href="/">← Back to Academic Assistance</a>
+      <a className="btn primary" href="/promoter">My Promoter Dashboard</a>
+    </div>
 
     <div className="notice" style={{marginTop:18}}>
       <strong>Not yet an approved promoter?</strong> Our first intake is open to UNN students. <a href="/recruitment"><strong>See the commission programme and register here →</strong></a>
@@ -50,6 +53,7 @@ export default function PartnersPage() {
         <button className="btn primary" onClick={copyLink}>{copied ? "✓ Link Copied" : "Copy Referral Link"}</button>
         <button className="btn secondary" onClick={shareLink}>Share Link</button>
         <a className="btn secondary" href={referralLink}>Open Link</a>
+        <a className="btn secondary" href="/promoter">Check Referrals & Commission</a>
       </div>
 
       <div className="card" style={{marginTop:24,background:"#f5f8f6"}}>
@@ -58,7 +62,8 @@ export default function PartnersPage() {
         <p><strong>2.</strong> Use only the official referral code assigned to you.</p>
         <p><strong>3.</strong> Give your referral link to an interested student or client.</p>
         <p><strong>4.</strong> The student opens the link and the referral code is remembered during the session.</p>
-        <p><strong>5.</strong> Eligible paid and completed orders are attributed to your code for commission.</p>
+        <p><strong>5.</strong> Eligible paid and fulfilled orders are attributed to your code for commission.</p>
+        <p style={{marginBottom:0}}><strong>6.</strong> Use the Promoter Dashboard to check performance, accrued commission and recorded payouts.</p>
       </div>
 
       <div className="notice" style={{marginTop:16}}>
