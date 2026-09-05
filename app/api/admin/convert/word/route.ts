@@ -3,6 +3,7 @@ import {
   DocumentTransformationError,
   parseDocumentTransformationMode,
   transformAcademicText,
+  wordsPerPageForSpacing,
 } from "@/lib/ai-document-transform";
 import {
   formToggleEnabled,
@@ -18,9 +19,11 @@ import { buildAcademicWordDocument } from "@/lib/word-document";
 import { attachmentContentDisposition, safeAttachmentFilename } from "@/lib/download-filename";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 const MAX_CHARS = 600_000;
 const MAX_AI_DRAFT_PAGES = 20;
+const MAX_TARGET_PAGES = 100;
 
 export async function POST(request: Request) {
   try {
@@ -32,10 +35,13 @@ export async function POST(request: Request) {
     const fontSize = Math.min(30, Math.max(8, Number(form.get("fontSize") || 12)));
     const formatPreset = parseFormatPreset(form.get("formatPreset"));
     const spacing = formatPreset === "unn" ? "2.0" : parseDocumentLineSpacing(form.get("spacing"));
-    const targetPages = Math.min(MAX_AI_DRAFT_PAGES, Math.max(1, Number(form.get("targetPages") || 3)));
+    const targetPages = Math.min(MAX_TARGET_PAGES, Math.max(1, Math.round(Number(form.get("targetPages") || 3))));
     const coverPage = form.get("coverPage") === "on";
     const references = form.get("references") === "on";
     const transformationMode = parseDocumentTransformationMode(form.get("transformationMode"));
+    if (transformationMode === "write-assignment" && targetPages > MAX_AI_DRAFT_PAGES) {
+      return NextResponse.json({ error: "Write Assignment is limited to 20 pages. Page reduction and expansion can target up to 100 pages." }, { status: 400 });
+    }
     const bodyAlignment = parseBodyAlignment(form.get("bodyAlignment"));
     const paragraphIndentation = parseParagraphIndentation(form.get("paragraphIndentation"));
     const boldHeadings = formToggleEnabled(form, "boldHeadings");
@@ -60,6 +66,7 @@ export async function POST(request: Request) {
       instructions: transformationMode === "write-assignment" ? text : "",
       targetPages,
       referencesRequested: references,
+      wordsPerPage: wordsPerPageForSpacing(spacing),
     });
     const buffer = await buildAcademicWordDocument({
       text: transformed.text,
@@ -100,6 +107,8 @@ export async function POST(request: Request) {
         "X-Text-Transformation": transformationMode,
         "X-Text-Changed": transformed.changed ? "true" : "false",
         "X-AI-Used": transformationMode === "format" ? "false" : "true",
+        ...(transformed.estimatedPages ? { "X-Estimated-Pages": String(transformed.estimatedPages) } : {}),
+        ...(transformed.targetPages ? { "X-Target-Pages": String(transformed.targetPages) } : {}),
       },
     });
   } catch (error) {

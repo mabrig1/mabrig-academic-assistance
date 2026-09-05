@@ -8,6 +8,7 @@ Open-source MVP for Mabrig ICT & Academic Assistance: student ordering, academic
 - Order request form with protected, downloadable file retention (uploads up to 4MB)
 - Academic submissions up to 100 pages
 - UNN Undergraduate Project formatting preset with Times New Roman 12pt, 2.0 double spacing, justified body text, academic headings and hanging reference entries
+- AI page reduction and expansion for uploaded or pasted documents, with a selectable 1–100 page target and output-length safeguards
 - Order IDs
 - Service catalogue
 - Responsive mobile/desktop UI

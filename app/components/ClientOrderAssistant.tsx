@@ -7,7 +7,7 @@ type ChatMessage = { id: string; role: "assistant" | "client"; text: string };
 
 const helpReplies: Record<string, string> = {
   submit: "Complete the order form, upload a supported document or paste the text, add your deadline and instructions, then select Submit. You will receive an order number immediately.",
-  formatting: "UNN formatting is the default: Times New Roman, 12pt, 1.5 spacing, justified paragraphs, first-line body indents, bold headings and hanging reference indents. APA 7 and MLA 9 are also available.",
+  formatting: "UNN formatting is the default: Times New Roman, 12pt, 2.0 double spacing, justified paragraphs, first-line body indents, bold headings and hanging reference indents. APA 7 and MLA 9 are also available, together with page reduction and expansion to a selected target.",
   delivery: "Choose digital only, print only, format plus print, or campus delivery. For delivery, select your UNN location and add a hostel, block or meeting-point note.",
   status: "Use Track Order with your order number and the WhatsApp number used during submission. I can also attach a new instruction to an existing order here.",
 };

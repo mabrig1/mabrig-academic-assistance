@@ -1,4 +1,10 @@
-export type DocumentTransformationMode = "format" | "proofread" | "write-assignment" | "rewrite-assignment";
+export type DocumentTransformationMode =
+  | "format"
+  | "proofread"
+  | "write-assignment"
+  | "rewrite-assignment"
+  | "reduce-pages"
+  | "expand-pages";
 
 type DocumentEditingMode = Exclude<DocumentTransformationMode, "format" | "write-assignment">;
 
@@ -24,7 +30,19 @@ export class DocumentTransformationError extends Error {
 export function parseDocumentTransformationMode(value: unknown): DocumentTransformationMode {
   if (value === "write-assignment") return "write-assignment";
   if (value === "rewrite" || value === "rewrite-assignment") return "rewrite-assignment";
+  if (value === "reduce-pages") return "reduce-pages";
+  if (value === "expand-pages") return "expand-pages";
   return value === "proofread" ? "proofread" : "format";
+}
+
+export function wordsPerPageForSpacing(spacing: unknown) {
+  if (spacing === "1.0" || spacing === "single") return 520;
+  if (spacing === "1.5") return 400;
+  return 300;
+}
+
+function countWords(value: string) {
+  return value.trim().match(/\S+/g)?.length || 0;
 }
 
 function normalizeForComparison(value: string) {
@@ -95,12 +113,17 @@ async function transformChunk(options: {
   apiKey: string;
   baseUrl: string;
   model: string;
+  targetWords?: number;
 }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
   const modeInstruction = options.mode === "rewrite-assignment"
     ? "Rewrite the complete assignment with substantially different sentence structure and wording while preserving every meaning, fact, figure, quotation, citation, heading and reference. Improve coherence between sections and maintain an appropriate academic voice."
-    : "Correct grammar, punctuation and awkward phrasing; improve clarity, flow and academic tone while preserving the writer's voice and approximately the same length.";
+    : options.mode === "reduce-pages"
+      ? `Condense this document part to approximately ${options.targetWords || 300} words. Remove repetition and non-essential explanation, combine overlapping points, and make sentences economical. Preserve the central argument, all facts and figures used in retained claims, all quotations that remain necessary, their exact citation markers, and every reference-list entry. Do not turn the document into notes unless it was already written as notes.`
+      : options.mode === "expand-pages"
+        ? `Develop this document part to approximately ${options.targetWords || 600} words. Deepen explanations, synthesis, transitions, implications and examples that can be supported by the supplied material. Never invent evidence, findings, citations or sources; where new evidence is genuinely required, insert [Add verified source] instead.`
+        : "Correct grammar, punctuation and awkward phrasing; improve clarity, flow and academic tone while preserving the writer's voice and approximately the same length.";
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${options.apiKey}`,
@@ -119,6 +142,7 @@ async function transformChunk(options: {
       body: JSON.stringify({
         model: options.model,
         temperature: 0.2,
+        ...(options.targetWords ? { max_tokens: Math.min(12_000, Math.max(1_200, Math.ceil(options.targetWords * 1.8))) } : {}),
         messages: [
           {
             role: "system",
@@ -177,11 +201,12 @@ async function writeAssignmentDraft(options: {
   apiKey: string;
   baseUrl: string;
   model: string;
+  wordsPerPage: number;
 }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
   const targetPages = Math.min(20, Math.max(1, Math.round(Number(options.targetPages) || 3)));
-  const targetWords = Math.min(6_000, Math.max(700, targetPages * 350));
+  const targetWords = Math.min(6_000, Math.max(300, targetPages * options.wordsPerPage));
   const assignmentBrief = (options.instructions || "").trim();
   const sourceNotes = options.text.trim().slice(0, 28_000);
 
@@ -272,8 +297,12 @@ export async function transformAcademicText(options: {
   targetPages?: number;
   citationsRequested?: boolean;
   referencesRequested?: boolean;
+  wordsPerPage?: number;
 }) {
-  if (options.mode === "format") return { text: options.text, changed: false };
+  const formatWords = countWords(options.text);
+  if (options.mode === "format") {
+    return { text: options.text, changed: false, wordCount: formatWords, estimatedPages: undefined, targetPages: undefined };
+  }
 
   const apiKey = process.env.AI_API_KEY?.trim();
   const baseUrl = process.env.AI_BASE_URL?.trim();
@@ -286,13 +315,22 @@ export async function transformAcademicText(options: {
   }
 
   if (options.mode === "write-assignment") {
+    const wordsPerPage = Math.min(600, Math.max(200, Math.round(Number(options.wordsPerPage) || 300)));
     const text = await writeAssignmentDraft({
       ...options,
       apiKey,
       baseUrl,
       model,
+      wordsPerPage,
     });
-    return { text, changed: true };
+    const wordCount = countWords(text);
+    return {
+      text,
+      changed: true,
+      wordCount,
+      estimatedPages: Math.max(1, Math.ceil(wordCount / wordsPerPage)),
+      targetPages: Math.min(20, Math.max(1, Math.round(Number(options.targetPages) || 3))),
+    };
   }
 
   const mode: DocumentEditingMode = options.mode;
@@ -300,7 +338,29 @@ export async function transformAcademicText(options: {
     throw new DocumentTransformationError("Upload or paste an assignment before using an editing mode.", 400);
   }
 
+  const sourceWordCount = countWords(options.text);
+  const adjustsPages = mode === "reduce-pages" || mode === "expand-pages";
+  const wordsPerPage = Math.min(600, Math.max(200, Math.round(Number(options.wordsPerPage) || 300)));
+  const targetPages = adjustsPages
+    ? Math.min(100, Math.max(1, Math.round(Number(options.targetPages) || 1)))
+    : undefined;
+  const targetWordCount = targetPages ? targetPages * wordsPerPage : undefined;
+
+  if (mode === "reduce-pages" && targetWordCount && targetWordCount >= sourceWordCount * 0.95) {
+    throw new DocumentTransformationError(
+      `Reduction needs a smaller target. This text is approximately ${Math.max(1, Math.ceil(sourceWordCount / wordsPerPage))} formatted pages.`,
+      400,
+    );
+  }
+  if (mode === "expand-pages" && targetWordCount && targetWordCount <= sourceWordCount * 1.05) {
+    throw new DocumentTransformationError(
+      `Expansion needs a larger target. This text is approximately ${Math.max(1, Math.ceil(sourceWordCount / wordsPerPage))} formatted pages.`,
+      400,
+    );
+  }
+
   const chunks = chunkDocument(options.text);
+  const chunkWordCounts = chunks.map(countWords);
   const transformed = new Array<string>(chunks.length);
 
   for (let start = 0; start < chunks.length; start += MAX_CONCURRENT_REQUESTS) {
@@ -314,6 +374,9 @@ export async function transformAcademicText(options: {
       apiKey,
       baseUrl,
       model,
+      targetWords: targetWordCount
+        ? Math.max(80, Math.round(targetWordCount * (chunkWordCounts[start + offset] / Math.max(1, sourceWordCount))))
+        : undefined,
     })));
     results.forEach((result, offset) => {
       transformed[start + offset] = result;
@@ -329,5 +392,19 @@ export async function transformAcademicText(options: {
     );
   }
 
-  return { text, changed };
+  const wordCount = countWords(text);
+  if (mode === "reduce-pages" && wordCount >= sourceWordCount * 0.95) {
+    throw new DocumentTransformationError("The page reducer did not shorten the document enough, so no misleading download was produced. Try a smaller target or another AI model.", 422);
+  }
+  if (mode === "expand-pages" && wordCount <= sourceWordCount * 1.05) {
+    throw new DocumentTransformationError("The page expander did not develop the document enough, so no misleading download was produced. Try a larger target or another AI model.", 422);
+  }
+
+  return {
+    text,
+    changed,
+    wordCount,
+    estimatedPages: adjustsPages ? Math.max(1, Math.ceil(wordCount / wordsPerPage)) : undefined,
+    targetPages,
+  };
 }

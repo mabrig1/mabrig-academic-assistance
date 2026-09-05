@@ -67,8 +67,8 @@ export default function AdminConverterPage() {
                 </select>
               </label>
               <label className="field">
-                <span>AI draft target pages (max 20)</span>
-                <input name="targetPages" type="number" min="1" max="20" defaultValue="3" />
+                <span>Target pages (20 for writing; 100 for resizing)</span>
+                <input name="targetPages" type="number" min="1" max="100" defaultValue="3" />
               </label>
               <label className="field">
                 <span>Text treatment</span>
@@ -77,6 +77,8 @@ export default function AdminConverterPage() {
                   <option value="proofread">Proofread &amp; improve clarity (AI)</option>
                   <option value="write-assignment">Write Assignment from topic &amp; brief (AI)</option>
                   <option value="rewrite-assignment">Rewrite submitted Assignment (AI)</option>
+                  <option value="reduce-pages">Reduce document to target pages (AI)</option>
+                  <option value="expand-pages">Expand document to target pages (AI)</option>
                 </select>
               </label>
               <label className="field">
@@ -149,7 +151,7 @@ export default function AdminConverterPage() {
             </div>
 
             <div className="notice" style={{ marginTop: 16 }}>
-              <strong>Two assignment powers:</strong> Write Assignment creates a structured draft from a topic and brief; Rewrite Assignment transforms a submitted assignment while preserving its facts and citations. UNN Undergraduate Project format is selected by default with Times New Roman 12pt, 2.0 double spacing, first-line body indents, bold headings and hanging references. Use Custom academic format when a lecturer or department requires different spacing. Uploaded or pasted documents can be formatted up to the 100-page service limit; AI-created assignment drafts retain the existing 20-page generation limit. The writer never invents missing sources.
+              <strong>Four AI document powers:</strong> Write Assignment creates a structured draft; Rewrite Assignment changes wording while preserving evidence; Reduce Pages condenses repetition to a target length; Expand Pages develops explanations and synthesis without inventing sources. UNN Undergraduate Project format remains Times New Roman 12pt, 2.0 double spacing, first-line body indents, bold headings and hanging references. Uploaded or pasted documents can target up to 100 pages; new AI-written assignments retain the 20-page limit.
             </div>
             <div className="notice" style={{ marginTop: 10 }}>
               <strong>AI connection:</strong> {aiConfigured ? `Configured${aiModel ? ` with ${aiModel}` : ""}.` : "Not fully configured. Add AI_API_KEY, AI_BASE_URL and AI_MODEL in Vercel, then redeploy."}
@@ -169,6 +171,8 @@ export default function AdminConverterPage() {
             <div><strong>Custom formatting</strong><span>Choose 1.0, 1.5 or 2.0 spacing when a different specification is required.</span></div>
             <div><strong>Write Assignment</strong><span>Turn a topic and lecturer's brief into a structured academic draft.</span></div>
             <div><strong>Rewrite Assignment</strong><span>Rework a complete assignment while preserving facts, citations and meaning.</span></div>
+            <div><strong>Reduce Pages</strong><span>Condense long work to a requested page target without a misleading unchanged download.</span></div>
+            <div><strong>Expand Pages</strong><span>Develop explanations and synthesis while protecting supplied facts and sources.</span></div>
             <div><strong>Printer control</strong><span>The Word file is generated inside the protected admin system.</span></div>
             <div><strong>Clean empty spaces</strong><span>Remove blank paragraphs and accidental vertical gaps before download.</span></div>
             <div><strong>APA or MLA</strong><span>Choose APA 7 References or MLA 9 Works Cited formatting.</span></div>
