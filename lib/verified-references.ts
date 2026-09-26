@@ -229,7 +229,6 @@ async function searchCrossref(query: string, fromYear: number, toYear: number) {
     "query.bibliographic": query,
     rows: "8",
     filter: `from-pub-date:${fromYear}-01-01,until-pub-date:${toYear}-12-31`,
-    select: "DOI,title,author,published,issued,created,container-title,publisher,type,URL,abstract,score,updated-by,update-to",
   });
   const mailto = process.env.CROSSREF_MAILTO?.trim();
   if (mailto) params.set("mailto", mailto);
