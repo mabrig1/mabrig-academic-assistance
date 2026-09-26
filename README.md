@@ -5,9 +5,11 @@ Open-source MVP for Mabrig ICT & Academic Assistance: student ordering, academic
 ## MVP
 
 - Student-facing Next.js storefront
+- UNN Academic Writer for assignments, assessments, term papers and seminar papers with direct DOCX download
 - Order request form with protected, downloadable file retention (uploads up to 4MB)
 - Academic submissions up to 100 pages
 - UNN Undergraduate Project formatting preset with Times New Roman 12pt, 2.0 double spacing, justified body text, academic headings and hanging reference entries
+- UNN academic-paper title page with faculty, department, course, student details, page numbering, optional abstract/TOC and lecturer-instruction override
 - Order IDs
 - Service catalogue
 - Responsive mobile/desktop UI
