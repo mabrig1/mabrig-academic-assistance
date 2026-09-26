@@ -12,6 +12,8 @@ import {
   TextRun,
 } from "docx";
 import type { UnnAcademicWorkType, UnnCitationStyle } from "./unn-academic-writer";
+import type { VerifiedReference } from "./verified-references";
+import { formatVerifiedReference } from "./verified-references";
 
 const FONT = "Times New Roman";
 const BODY_SIZE = 24;
@@ -36,6 +38,8 @@ export type UnnAcademicWordInput = {
   submissionDate?: string;
   citationStyle: UnnCitationStyle;
   includeTableOfContents: boolean;
+  includeVerificationAppendix?: boolean;
+  verifiedReferences?: VerifiedReference[];
   generatedText: string;
 };
 
@@ -62,7 +66,7 @@ function paragraph(text: string, options: { align?: (typeof AlignmentType)[keyof
   });
 }
 
-function centered(text: string, options: { bold?: boolean; size?: number; before?: number; after?: number } = {}) {
+function centered(text: string, options: { bold?: boolean; size?: number before?: number; after?: number } = {}) {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { line: DOUBLE, before: options.before || 0, after: options.after || 0 },
@@ -87,9 +91,9 @@ function blankFooter() {
 
 function clean(value: string) {
   return value
-    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*\(.*?)\*\*/g, "$1")
     .replace(/__(.*?)__/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
+    .replace(/`([^`]+)`\/g, "$1")
     .trim();
 }
 
@@ -136,7 +140,7 @@ function markdownBody(text: string) {
       continue;
     }
 
-    const heading = line.match(/^(#{2,3})\s+(.+)$/);
+    const heading = line.match(/^(##{2,3})\s+(.+)$/);
     const bullet = line.match(/^[-*+]\s+(.+)$/);
     const numbered = line.match(/^(\d+)[.)]\s+(.+)$/);
 
@@ -171,15 +175,61 @@ function markdownBody(text: string) {
   return children;
 }
 
-function referenceParagraphs(text: string) {
-  const items = text.split(/\n+/).map(item => clean(item)).filter(Boolean);
-  if (!items.length) return [paragraph("[Add verified references used in the paper]", { noIndent: true })];
-  return items.map(item => new Paragraph({
+function referenceParagraphs(references: VerifiedReference[], style: UnnCitationStyle) {
+  if (!references.length) {
+    return [paragraph("[No verified scholarly references were used in this draft]", { noIndent: true })];
+  }
+  return references.map(reference => new Paragraph({
     alignment: AlignmentType.LEFT,
     indent: { left: 720, hanging: 720 },
     spacing: { line: DOUBLE, after: 0 },
-    children: [run(item)],
+    children: [run(formatVerifiedReference(reference, style))],
   }));
+}
+
+function verificationAppendix(references: VerifiedReference[]) {
+  if (!references.length) return [];
+  const children: Paragraph[] = [
+    new Paragraph({
+      pageBreakBefore: true,
+      heading: HeadingLevel.HEADING_1,
+      alignment: AlignmentType.CENTER,
+      spacing: { line: DOUBLE, after: 180 },
+      children: [run("SOURCE VERIFICATION APPENDIX", { bold: true })],
+    }),
+    paragraph(
+      "This appendix records the scholarly metadata checks performed automatically before the references were used. It is a verification aid and may be removed before submission unless the lecturer requests it.",
+      { noIndent: true },
+    ),
+  ];
+
+  references.forEach(reference => {
+    const authorText = reference.authors
+      .map(author => [author.given, author.family].filter(Boolean).join(" "))
+      .join(", ");
+    const audit = [
+      `${reference.id}: VERIFIED`,
+      `Quality score: ${reference.qualityScore}/100`,
+      `Title: ${reference.title}`,
+      `Authors: ${authorText}`,
+      `Year: ${reference.year}`,
+      reference.journal ? `Publication: ${reference.journal}` : "",
+      `DOI: ${reference.doi}`,
+      `Metadata checks: ${reference.verificationSources.join(" + ")}`,
+      `Evidence available: ${reference.evidenceLevel === "abstract" ? "abstract + metadata" : "metadata only"}`,
+      `Retraction/withdrawal check: ${reference.retractionChecked && !reference.retracted ? "passed" : "review required"}`,
+      reference.citationCount !== undefined ? `Semantic Scholar citation count: ${reference.citationCount}` : "",
+      reference.issues.length ? `Notes: ${reference.issues.join("; ")}` : "Notes: no verification warnings",
+    ].filter(Boolean).join(" | ");
+
+    children.push(new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { line: SINGLE, before: 100, after: 80 },
+      children: [run(audit, { size: 20 })],
+    }));
+  });
+
+  return children;
 }
 
 function titlePage(input: UnnAcademicWordInput) {
@@ -210,11 +260,11 @@ function titlePage(input: UnnAcademicWordInput) {
 export async function buildUnnAcademicWordDocument(input: UnnAcademicWordInput) {
   const sections = parseSections(input.generatedText);
   const abstract = sections.find(section => section.heading === "ABSTRACT");
-  const references = sections.find(section => /^(REFERENCES|WORKS CITED|BIBLIOGRAPHY)$/.test(section.heading));
   const bodySections = sections.filter(section =>
     section.heading !== "ABSTRACT" &&
     !/^(REFERENCES|WORKS CITED|BIBLIOGRAPHY)$/.test(section.heading)
   );
+  const verifiedReferences = input.verifiedReferences || [];
 
   const page = {
     size: { width: A4_WIDTH, height: A4_HEIGHT, orientation: PageOrientation.PORTRAIT },
@@ -284,7 +334,11 @@ export async function buildUnnAcademicWordDocument(input: UnnAcademicWordInput) 
       spacing: { line: DOUBLE, after: 160 },
       children: [run(input.citationStyle === "mla9" ? "WORKS CITED" : "REFERENCES", { bold: true })],
     }));
-    bodyChildren.push(...referenceParagraphs(references?.body || ""));
+    bodyChildren.push(...referenceParagraphs(verifiedReferences, input.citationStyle));
+  }
+
+  if (input.includeVerificationAppendix) {
+    bodyChildren.push(...verificationAppendix(verifiedReferences));
   }
 
   documentSections.push({
