@@ -66,7 +66,7 @@ export async function POST(request: Request) {
         fallback: "converted-document",
       });
 
-      return new Response(converted, {
+      return new Response(new Uint8Array(converted), {
         headers: {
           "Content-Type": "application/pdf",
           "Content-Disposition": attachmentContentDisposition(filename),
