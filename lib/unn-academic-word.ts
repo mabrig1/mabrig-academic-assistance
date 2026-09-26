@@ -66,7 +66,7 @@ function paragraph(text: string, options: { align?: (typeof AlignmentType)[keyof
   });
 }
 
-function centered(text: string, options: { bold?: boolean; size?: number before?: number; after?: number } = {}) {
+function centered(text: string, options: { bold?: boolean; size?: number; before?: number; after?: number } = {}) {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { line: DOUBLE, before: options.before || 0, after: options.after || 0 },
