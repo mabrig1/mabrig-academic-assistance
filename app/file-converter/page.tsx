@@ -12,6 +12,7 @@ export default function FileConverterPage() {
       <Link className="brand" href="/">MABRIG ICT</Link>
       <div className="actions">
         <Link className="btn secondary" href="/academic-writer">Academic Writer</Link>
+        <Link className="btn secondary" href="/cover-page">Cover Page Creator</Link>
         <Link className="btn secondary" href="/academic-printing">Academic Printing</Link>
         <Link className="btn secondary" href="/">Home</Link>
       </div>
