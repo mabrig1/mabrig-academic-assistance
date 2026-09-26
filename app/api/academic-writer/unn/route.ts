@@ -121,6 +121,12 @@ export async function POST(request: Request) {
       ? applyVerifiedCitationMarkers(rawGeneratedText, verifiedReferences, citationStyle)
       : { text: rawGeneratedText, usedReferences: [] };
 
+    if (verifiedReferences.length && citationResult.text.includes("[citation verification failed]")) {
+      return NextResponse.json({
+        error: "The draft referenced a source marker that did not pass verification, so generation was stopped. Please try again.",
+      }, { status: 422 });
+    }
+
     if (verifiedReferences.length && citationResult.usedReferences.length === 0) {
       return NextResponse.json({
         error: "The draft did not attach any verified source markers to its claims, so the system stopped rather than create an uncited reference list. Please try again.",
