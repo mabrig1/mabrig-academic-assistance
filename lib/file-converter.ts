@@ -3,7 +3,6 @@ import { PDFParse } from "pdf-parse";
 import {
   AlignmentType,
   Document,
-  PageBreak,
   Packer,
   Paragraph,
   TextRun,
@@ -216,6 +215,7 @@ export async function convertPdfToDocx(input: Uint8Array, sourceName = "document
     }
 
     const pages = text.split(/\n?<<<MABRIG_PAGE_BREAK\s+\d+\s+of\s+\d+>>>\n?/g);
+    while (pages.length > 1 && !pages[pages.length - 1].trim()) pages.pop();
     const children = pages.flatMap((pageText, index) => pageParagraphs(pageText, index));
 
     const doc = new Document({
