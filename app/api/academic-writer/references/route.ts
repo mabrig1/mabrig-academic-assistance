@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       ok: true,
       queries: research.queries,
       sources: research.references.map(publicReferenceSnapshot),
-      retractionCheck: "Crossref + Retraction Watch metadata",
+      retractionCheck: "Crossref update/retraction metadata",
       semanticScholarEnrichment: research.references.some(reference => reference.verificationSources.includes("Semantic Scholar")),
     });
   } catch (error) {
