@@ -12,6 +12,7 @@ import {
   discoverVerifiedReferences,
   extractDoiList,
   type ReferenceMode,
+  type VerifiedReference,
 } from "@/lib/verified-references";
 
 export const runtime = "nodejs";
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    let verifiedReferences = [];
+    let verifiedReferences: VerifiedReference[] = [];
     if (citationStyle !== "none" && referenceMode !== "off") {
       if (referenceMode === "provided-only" && !selectedDois.length && !extractDoiList(sourceMaterial).length) {
         return NextResponse.json({
