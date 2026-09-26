@@ -284,13 +284,17 @@ async function semanticScholarBatch(dois: string[]) {
   }
 }
 
-function authorsFromCrossref(work: CrossrefWork) {
-  return (work.author || [])
-    .map(author => ({
+function authorsFromCrossref(work: CrossrefWork): VerifiedReference["authors"] {
+  const authors: VerifiedReference["authors"] = [];
+  for (const author of work.author || []) {
+    const family = (author.family || author.name || "").trim();
+    if (!family) continue;
+    authors.push({
       given: author.given?.trim() || undefined,
-      family: (author.family || author.name || "").trim(),
-    }))
-    .filter(author => author.family);
+      family,
+    });
+  }
+  return authors;
 }
 
 function candidateToVerified(
