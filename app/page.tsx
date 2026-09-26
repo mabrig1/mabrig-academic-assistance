@@ -5,6 +5,7 @@ import AcademicPrintOrderForm from "./components/AcademicPrintOrderForm";
 import SpecialServicePoster from "./components/SpecialServicePoster";
 
 const services = [
+  ["UNN Academic Writer", "Generate assignments, assessments, term papers and seminar papers from the lecturer's brief and download an editable Word document."],
   ["Academic Document Printing", "Upload or paste up to 100 pages for formatting, printing, binding and optional campus delivery. File uploads are limited to 4MB."],
   ["UNN Undergraduate Project Formatting", "Times New Roman 12pt, 2.0 double spacing, justified academic layout, headings, references and project-ready Word formatting."],
   ["Article Rewriter & Humanizer", "Rewrite articles, assignments and academic drafts for clearer, more natural flow while preserving the original meaning, facts, citations and references."],
@@ -31,9 +32,9 @@ export default function Home() {
   }, []);
 
   return <>
-    <header className="container nav"><div className="brand">MABRIG ICT</div><div className="actions"><a className="btn secondary" href="/academic-printing">Academic Printing</a><a className="btn primary" href="/join">Opportunities</a><a className="btn secondary" href="/recruitment">Paid Promoter Programme</a><a className="btn secondary" href="/partners">Referral Links</a><a className="btn secondary" href="/track">Track Order</a><a className="btn secondary" href="#order">Place an Order</a></div></header>
+    <header className="container nav"><div className="brand">MABRIG ICT</div><div className="actions"><a className="btn primary" href="/academic-writer">Academic Writer</a><a className="btn secondary" href="/academic-printing">Academic Printing</a><a className="btn primary" href="/join">Opportunities</a><a className="btn secondary" href="/recruitment">Paid Promoter Programme</a><a className="btn secondary" href="/partners">Referral Links</a><a className="btn secondary" href="/track">Track Order</a><a className="btn secondary" href="#order">Place an Order</a></div></header>
     <main>
-      <section className="hero"><div className="container"><span className="badge">UNN Academic & Document Services</span><h1>Submit. Rewrite. Humanize. Format. Print.</h1><p className="lead">One platform for academic support, article rewriting and humanizing, UNN undergraduate project formatting, professional document processing, printing, binding and campus delivery.</p><div className="actions"><a className="btn primary" href="/academic-printing/order">Upload or Paste My Work</a><a className="btn secondary" href="#services">Explore Services</a><a className="btn secondary" href="/join">View Mabrig Opportunities</a></div></div></section>
+      <section className="hero"><div className="container"><span className="badge">UNN Academic & Document Services</span><h1>Submit. Rewrite. Humanize. Format. Print.</h1><p className="lead">One platform for academic support, article rewriting and humanizing, UNN undergraduate project formatting, professional document processing, printing, binding and campus delivery.</p><div className="actions"><a className="btn primary" href="/academic-writer">Write Assignment / Term Paper</a><a className="btn secondary" href="/academic-printing/order">Upload or Paste My Work</a><a className="btn secondary" href="#services">Explore Services</a><a className="btn secondary" href="/join">View Mabrig Opportunities</a></div></div></section>
       {referralCode && <section className="section container" style={{paddingBottom:0}}><div className="notice"><strong>Partner referral recorded.</strong> Your order will be attributed to referral code <strong>{referralCode}</strong> where eligible under the partner programme.</div></section>}
 
       <SpecialServicePoster />
@@ -51,7 +52,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="services" className="section container"><h2>What we deliver</h2><div className="grid">{services.map(([title, text]) => <article className="card" key={title}><h3>{title}</h3><p>{text}</p>{(title === "Academic Document Printing" || title === "Article Rewriter & Humanizer") && <a className="btn primary" href="/academic-printing/order">Use This Service</a>}</article>)}</div></section>
+      <section id="services" className="section container"><h2>What we deliver</h2><div className="grid">{services.map(([title, text]) => <article className="card" key={title}><h3>{title}</h3><p>{text}</p>{title === "UNN Academic Writer" && <a className="btn primary" href="/academic-writer">Open Academic Writer</a>}{(title === "Academic Document Printing" || title === "Article Rewriter & Humanizer") && <a className="btn primary" href="/academic-printing/order">Use This Service</a>}</article>)}</div></section>
 
       <section id="order" className="section">
         <div className="container order">
