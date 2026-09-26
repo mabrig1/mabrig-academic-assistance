@@ -136,6 +136,16 @@ export async function buildCoverPageDocument(input: CoverPageInput) {
   const institution = clean(input.institution) || "UNIVERSITY OF NIGERIA, NSUKKA";
   const title = clean(input.title);
   const studentName = clean(input.studentName);
+  const titleSize = title.length > 140
+    ? Math.max(24, template.titleSize - 10)
+    : title.length > 90
+      ? Math.max(26, template.titleSize - 6)
+      : title.length > 55
+        ? Math.max(28, template.titleSize - 3)
+        : template.titleSize;
+  const institutionSize = institution.length > 55
+    ? Math.max(24, template.headingSize - 4)
+    : template.headingSize;
 
   if (!title || !studentName) {
     throw new Error("Cover page title and student name are required.");
@@ -149,7 +159,7 @@ export async function buildCoverPageDocument(input: CoverPageInput) {
 
   const children: Paragraph[] = [
     centered(institution.toUpperCase(), {
-      size: template.headingSize,
+      size: institutionSize,
       bold: true,
       color: template.color,
       before: 420,
@@ -193,7 +203,7 @@ export async function buildCoverPageDocument(input: CoverPageInput) {
   }
 
   children.push(centered(title.toUpperCase(), {
-    size: template.titleSize,
+    size: titleSize,
     bold: true,
     color: "111111",
     before: 100,
