@@ -71,6 +71,16 @@ export default function AcademicWriterForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (referenceMode !== "off" && references.length === 0) {
+      setMessage("Discover and review verified references before generating the paper, or choose No reference research.");
+      return;
+    }
+    if (referenceMode !== "off" && selectedDois.length === 0) {
+      setMessage("Select at least one verified source to use, or choose No reference research.");
+      return;
+    }
+
     setGenerating(true);
     setMessage("Writing from verified evidence and formatting your UNN academic document...");
     const form = new FormData(event.currentTarget);
