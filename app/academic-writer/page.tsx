@@ -13,9 +13,9 @@ export default function AcademicWriterPage() {
     <main>
       <section className="hero compact-hero">
         <div className="container">
-          <span className="badge">UNN Academic Writer</span>
-          <h1>From Lecturer's Question to Editable Word Document.</h1>
-          <p className="lead">Generate assignments, assessments, term papers and seminar papers with an UNN-focused academic structure, then download the result as an editable .docx file.</p>
+          <span className="badge">UNN Academic Writer • Verified References Agent</span>
+          <h1>From Lecturer&apos;s Question to Verified, Citation-Ready Word Document.</h1>
+          <p className="lead">Generate assignments, assessments, term papers and seminar papers with an UNN-focused structure. Discover scholarly sources, verify DOI metadata and reference health, approve what may be cited, then download the final editable .docx.</p>
         </div>
       </section>
       <section className="section">
