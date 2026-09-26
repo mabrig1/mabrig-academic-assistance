@@ -6,6 +6,8 @@ Open-source MVP for Mabrig ICT & Academic Assistance: student ordering, academic
 
 - Student-facing Next.js storefront
 - UNN Academic Writer for assignments, assessments, term papers and seminar papers with direct DOCX download
+- Agentic verified-reference pipeline: research-query planning → Crossref DOI resolution → retraction/update screening → optional Semantic Scholar evidence enrichment → source scoring → student approval → claim-linked citations → deterministic bibliography
+- Optional source-verification appendix records DOI, quality score, evidence level, metadata checks and retraction status for every cited source
 - Order request form with protected, downloadable file retention (uploads up to 4MB)
 - Academic submissions up to 100 pages
 - UNN Undergraduate Project formatting preset with Times New Roman 12pt, 2.0 double spacing, justified body text, academic headings and hanging reference entries
@@ -41,6 +43,8 @@ npm run dev
 Open http://localhost:3000.
 
 Copy `.env.example` to `.env.local` when integrations are added. Never commit real API keys.
+
+For the verified-reference agent, `CROSSREF_MAILTO` is recommended for Crossref polite-pool identification. `SEMANTIC_SCHOLAR_API_KEY` is optional and improves the reliability of Semantic Scholar enrichment. The writer never constructs a bibliography from model-generated reference strings; citations are rendered from verified metadata.
 
 For submission alerts, set the WhatsApp Cloud API variables and `ADMIN_WHATSAPP_NUMBER=2347065342818`. For Telegram, message your bot once, obtain the numeric chat ID, and set `TELEGRAM_BOT_TOKEN` plus `TELEGRAM_ADMIN_CHAT_ID`. The notification code never blocks order creation when a provider is unavailable.
 
