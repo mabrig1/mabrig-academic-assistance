@@ -5,7 +5,7 @@ export default function AcademicPrintingPage() {
   return <>
     <header className="container nav">
       <Link className="brand" href="/">MABRIG ICT</Link>
-      <div className="actions"><Link className="btn secondary" href="/">Home</Link><Link className="btn secondary" href="/file-converter">File Converter</Link><Link className="btn primary" href="/academic-printing/order">Start Order</Link></div>
+      <div className="actions"><Link className="btn secondary" href="/">Home</Link><Link className="btn secondary" href="/file-converter">File Converter</Link><Link className="btn secondary" href="/cover-page">Cover Page Creator</Link><Link className="btn primary" href="/academic-printing/order">Start Order</Link></div>
     </header>
     <main>
       <section className="hero compact-hero">
