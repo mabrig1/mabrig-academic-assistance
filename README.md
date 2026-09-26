@@ -7,6 +7,7 @@ Open-source MVP for Mabrig ICT & Academic Assistance: student ordering, academic
 - Student-facing Next.js storefront
 - UNN Academic Writer for assignments, assessments, term papers and seminar papers with direct DOCX download
 - File Converter for DOCX → PDF and PDF → editable DOCX, with 4MB upload validation and no intentional file persistence
+- Cover Page Creator with live preview, UNN-oriented fields, four border themes and editable Word-native DOCX page borders
 - Agentic verified-reference pipeline: research-query planning → Crossref DOI resolution → retraction/update screening → optional Semantic Scholar evidence enrichment → source scoring → student approval → claim-linked citations → deterministic bibliography
 - Optional source-verification appendix records DOI, quality score, evidence level, metadata checks and retraction status for every cited source
 - Order request form with protected, downloadable file retention (uploads up to 4MB)
