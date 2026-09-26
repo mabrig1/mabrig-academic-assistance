@@ -31,7 +31,7 @@ export type CoverPageInput = {
 
 type TemplateConfig = {
   color: string;
-  borderStyle: string;
+  borderStyle: (typeof BorderStyle)[keyof typeof BorderStyle];
   borderSize: number;
   ornament: string;
   headingSize: number;
