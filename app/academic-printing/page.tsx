@@ -5,7 +5,7 @@ export default function AcademicPrintingPage() {
   return <>
     <header className="container nav">
       <Link className="brand" href="/">MABRIG ICT</Link>
-      <div className="actions"><Link className="btn secondary" href="/">Home</Link><Link className="btn primary" href="/academic-printing/order">Start Order</Link></div>
+      <div className="actions"><Link className="btn secondary" href="/">Home</Link><Link className="btn secondary" href="/file-converter">File Converter</Link><Link className="btn primary" href="/academic-printing/order">Start Order</Link></div>
     </header>
     <main>
       <section className="hero compact-hero">
@@ -13,7 +13,7 @@ export default function AcademicPrintingPage() {
           <span className="badge">Dedicated Student Printing Service</span>
           <h1>Send Your Work. We Format It. We Print It.</h1>
           <p className="lead">For assignments, term papers, undergraduate projects and academic documents up to 100 pages. Upload a file up to 4MB or paste your work directly, choose your formatting and printing options, and send it to the print shop.</p>
-          <div className="actions"><Link className="btn primary" href="/academic-printing/order">Upload or Paste My Work</Link><Link className="btn secondary" href="/academic-writer">Write a New Paper</Link><a className="btn whatsapp" href="https://wa.me/2347065342818?text=Hello%20Mabrig%20ICT%2C%20I%20want%20to%20use%20the%20Academic%20Document%20Printing%20service." target="_blank" rel="noreferrer">WhatsApp 07065342818</a></div>
+          <div className="actions"><Link className="btn primary" href="/academic-printing/order">Upload or Paste My Work</Link><Link className="btn secondary" href="/academic-writer">Write a New Paper</Link><Link className="btn secondary" href="/file-converter">Convert Word / PDF</Link><a className="btn whatsapp" href="https://wa.me/2347065342818?text=Hello%20Mabrig%20ICT%2C%20I%20want%20to%20use%20the%20Academic%20Document%20Printing%20service." target="_blank" rel="noreferrer">WhatsApp 07065342818</a></div>
         </div>
       </section>
 
