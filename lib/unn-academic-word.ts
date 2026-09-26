@@ -12,6 +12,8 @@ import {
   TextRun,
 } from "docx";
 import type { UnnAcademicWorkType, UnnCitationStyle } from "./unn-academic-writer";
+import type { VerifiedReference } from "./verified-references";
+import { formatVerifiedReference } from "./verified-references";
 
 const FONT = "Times New Roman";
 const BODY_SIZE = 24;
@@ -36,6 +38,8 @@ export type UnnAcademicWordInput = {
   submissionDate?: string;
   citationStyle: UnnCitationStyle;
   includeTableOfContents: boolean;
+  includeVerificationAppendix?: boolean;
+  verifiedReferences?: VerifiedReference[];
   generatedText: string;
 };
 
@@ -49,7 +53,17 @@ function run(text: string, options: { bold?: boolean; italics?: boolean; size?: 
   });
 }
 
-function paragraph(text: string, options: { align?: (typeof AlignmentType)[keyof typeof AlignmentType]; bold?: boolean; noIndent?: boolean; single?: boolean; before?: number; after?: number } = {}) {
+function paragraph(
+  text: string,
+  options: {
+    align?: (typeof AlignmentType)[keyof typeof AlignmentType];
+    bold?: boolean;
+    noIndent?: boolean;
+    single?: boolean;
+    before?: number;
+    after?: number;
+  } = {},
+) {
   return new Paragraph({
     alignment: options.align || AlignmentType.JUSTIFIED,
     indent: options.noIndent ? undefined : { firstLine: FIRST_LINE },
@@ -62,7 +76,10 @@ function paragraph(text: string, options: { align?: (typeof AlignmentType)[keyof
   });
 }
 
-function centered(text: string, options: { bold?: boolean; size?: number; before?: number; after?: number } = {}) {
+function centered(
+  text: string,
+  options: { bold?: boolean; size?: number; before?: number; after?: number } = {},
+) {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { line: DOUBLE, before: options.before || 0, after: options.after || 0 },
@@ -114,6 +131,7 @@ function parseSections(markdown: string) {
     }
     body.push(raw);
   }
+
   flush();
   return sections;
 }
@@ -154,7 +172,9 @@ function markdownBody(text: string) {
 
     if (bullet || numbered) {
       flush();
-      const value = bullet ? `• ${clean(bullet[1])}` : `${numbered![1]}. ${clean(numbered![2])}`;
+      const value = bullet
+        ? "• " + clean(bullet[1])
+        : numbered![1] + ". " + clean(numbered![2]);
       children.push(new Paragraph({
         alignment: AlignmentType.JUSTIFIED,
         indent: { left: 720, hanging: 360 },
@@ -171,15 +191,64 @@ function markdownBody(text: string) {
   return children;
 }
 
-function referenceParagraphs(text: string) {
-  const items = text.split(/\n+/).map(item => clean(item)).filter(Boolean);
-  if (!items.length) return [paragraph("[Add verified references used in the paper]", { noIndent: true })];
-  return items.map(item => new Paragraph({
+function referenceParagraphs(references: VerifiedReference[], style: UnnCitationStyle) {
+  if (!references.length) {
+    return [paragraph("[No verified scholarly references were used in this draft]", { noIndent: true })];
+  }
+
+  return references.map(reference => new Paragraph({
     alignment: AlignmentType.LEFT,
     indent: { left: 720, hanging: 720 },
     spacing: { line: DOUBLE, after: 0 },
-    children: [run(item)],
+    children: [run(formatVerifiedReference(reference, style))],
   }));
+}
+
+function verificationAppendix(references: VerifiedReference[]) {
+  if (!references.length) return [];
+
+  const children: Paragraph[] = [
+    new Paragraph({
+      pageBreakBefore: true,
+      heading: HeadingLevel.HEADING_1,
+      alignment: AlignmentType.CENTER,
+      spacing: { line: DOUBLE, after: 180 },
+      children: [run("SOURCE VERIFICATION APPENDIX", { bold: true })],
+    }),
+    paragraph(
+      "This appendix records scholarly metadata checks performed automatically before the references were used. It is a verification aid and may be removed before submission unless the lecturer requests it.",
+      { noIndent: true },
+    ),
+  ];
+
+  references.forEach(reference => {
+    const authorText = reference.authors
+      .map(author => [author.given, author.family].filter(Boolean).join(" "))
+      .join(", ");
+
+    const audit = [
+      reference.id + ": VERIFIED",
+      "Verification score: " + reference.qualityScore + "/100",
+      "Title: " + reference.title,
+      "Authors: " + authorText,
+      "Year: " + reference.year,
+      reference.journal ? "Publication: " + reference.journal : "",
+      "DOI: " + reference.doi,
+      "Metadata checks: " + reference.verificationSources.join(" + "),
+      "Evidence available: " + (reference.evidenceLevel === "abstract" ? "abstract + metadata" : "metadata only"),
+      "Retraction/withdrawal check: " + (reference.retractionChecked && !reference.retracted ? "passed" : "review required"),
+      reference.citationCount !== undefined ? "Semantic Scholar citation count: " + reference.citationCount : "",
+      reference.issues.length ? "Notes: " + reference.issues.join("; ") : "Notes: no verification warnings",
+    ].filter(Boolean).join(" | ");
+
+    children.push(new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { line: SINGLE, before: 100, after: 80 },
+      children: [run(audit, { size: 20 })],
+    }));
+  });
+
+  return children;
 }
 
 function titlePage(input: UnnAcademicWordInput) {
@@ -193,32 +262,48 @@ function titlePage(input: UnnAcademicWordInput) {
 
   return [
     centered("UNIVERSITY OF NIGERIA, NSUKKA", { bold: true, size: 28, before: 240, after: 360 }),
-    centered(`FACULTY OF ${input.faculty.toUpperCase()}`, { bold: true, after: 120 }),
-    centered(`DEPARTMENT OF ${input.department.toUpperCase()}`, { bold: true, after: 480 }),
+    centered("FACULTY OF " + input.faculty.toUpperCase(), { bold: true, after: 120 }),
+    centered("DEPARTMENT OF " + input.department.toUpperCase(), { bold: true, after: 480 }),
     centered(workLabel, { bold: true, after: 240 }),
     centered(input.title.toUpperCase(), { bold: true, size: 28, after: 600 }),
     centered("BY", { bold: true, after: 180 }),
     centered(input.studentName.toUpperCase(), { bold: true, after: 100 }),
     centered(input.registrationNumber.toUpperCase(), { bold: true, after: 480 }),
-    centered(`COURSE: ${[input.courseCode, input.courseTitle].filter(Boolean).join(" — ").toUpperCase()}`, { bold: true, after: 240 }),
-    ...(input.lecturer ? [centered(`LECTURER: ${input.lecturer.toUpperCase()}`, { bold: true, after: 180 })] : []),
-    ...(input.session ? [centered(`SESSION: ${input.session.toUpperCase()}`, { bold: true, after: 120 })] : []),
-    ...(input.submissionDate ? [centered(`DATE: ${input.submissionDate.toUpperCase()}`, { bold: true })] : []),
+    centered(
+      "COURSE: " + [input.courseCode, input.courseTitle].filter(Boolean).join(" — ").toUpperCase(),
+      { bold: true, after: 240 },
+    ),
+    ...(input.lecturer
+      ? [centered("LECTURER: " + input.lecturer.toUpperCase(), { bold: true, after: 180 })]
+      : []),
+    ...(input.session
+      ? [centered("SESSION: " + input.session.toUpperCase(), { bold: true, after: 120 })]
+      : []),
+    ...(input.submissionDate
+      ? [centered("DATE: " + input.submissionDate.toUpperCase(), { bold: true })]
+      : []),
   ];
 }
 
 export async function buildUnnAcademicWordDocument(input: UnnAcademicWordInput) {
   const sections = parseSections(input.generatedText);
   const abstract = sections.find(section => section.heading === "ABSTRACT");
-  const references = sections.find(section => /^(REFERENCES|WORKS CITED|BIBLIOGRAPHY)$/.test(section.heading));
   const bodySections = sections.filter(section =>
     section.heading !== "ABSTRACT" &&
     !/^(REFERENCES|WORKS CITED|BIBLIOGRAPHY)$/.test(section.heading)
   );
+  const verifiedReferences = input.verifiedReferences || [];
 
   const page = {
     size: { width: A4_WIDTH, height: A4_HEIGHT, orientation: PageOrientation.PORTRAIT },
-    margin: { top: ONE_INCH, right: ONE_INCH, bottom: ONE_INCH, left: ONE_INCH, header: 720, footer: 720 },
+    margin: {
+      top: ONE_INCH,
+      right: ONE_INCH,
+      bottom: ONE_INCH,
+      left: ONE_INCH,
+      header: 720,
+      footer: 720,
+    },
   };
 
   const documentSections: any[] = [
@@ -231,6 +316,7 @@ export async function buildUnnAcademicWordDocument(input: UnnAcademicWordInput) 
 
   if (abstract || input.includeTableOfContents) {
     const prelimChildren: any[] = [];
+
     if (abstract) {
       prelimChildren.push(
         new Paragraph({
@@ -242,6 +328,7 @@ export async function buildUnnAcademicWordDocument(input: UnnAcademicWordInput) 
         ...markdownBody(abstract.body),
       );
     }
+
     if (input.includeTableOfContents) {
       prelimChildren.push(
         new Paragraph({
@@ -252,12 +339,17 @@ export async function buildUnnAcademicWordDocument(input: UnnAcademicWordInput) 
           children: [run("TABLE OF CONTENTS", { bold: true })],
         }),
         new TableOfContents("", { hyperlink: true, headingStyleRange: "1-3" }),
-        paragraph("Update the table of contents in Microsoft Word after final pagination.", { noIndent: true, single: true }),
+        paragraph(
+          "Update the table of contents in Microsoft Word after final pagination.",
+          { noIndent: true, single: true },
+        ),
       );
     }
 
     documentSections.push({
-      properties: { page: { ...page, pageNumbers: { start: 1, formatType: NumberFormat.LOWER_ROMAN } } },
+      properties: {
+        page: { ...page, pageNumbers: { start: 1, formatType: NumberFormat.LOWER_ROMAN } },
+      },
       footers: { default: footer() },
       children: prelimChildren,
     });
@@ -284,13 +376,21 @@ export async function buildUnnAcademicWordDocument(input: UnnAcademicWordInput) 
       spacing: { line: DOUBLE, after: 160 },
       children: [run(input.citationStyle === "mla9" ? "WORKS CITED" : "REFERENCES", { bold: true })],
     }));
-    bodyChildren.push(...referenceParagraphs(references?.body || ""));
+    bodyChildren.push(...referenceParagraphs(verifiedReferences, input.citationStyle));
+  }
+
+  if (input.includeVerificationAppendix) {
+    bodyChildren.push(...verificationAppendix(verifiedReferences));
   }
 
   documentSections.push({
-    properties: { page: { ...page, pageNumbers: { start: 1, formatType: NumberFormat.DECIMAL } } },
+    properties: {
+      page: { ...page, pageNumbers: { start: 1, formatType: NumberFormat.DECIMAL } },
+    },
     footers: { default: footer() },
-    children: bodyChildren.length ? bodyChildren : [paragraph("No document body was generated.")],
+    children: bodyChildren.length
+      ? bodyChildren
+      : [paragraph("No document body was generated.")],
   });
 
   const doc = new Document({ sections: documentSections });

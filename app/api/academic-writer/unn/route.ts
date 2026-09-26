@@ -7,6 +7,13 @@ import {
   UnnAcademicWriterError,
 } from "@/lib/unn-academic-writer";
 import { buildUnnAcademicWordDocument } from "@/lib/unn-academic-word";
+import {
+  applyVerifiedCitationMarkers,
+  discoverVerifiedReferences,
+  extractDoiList,
+  type ReferenceMode,
+  type VerifiedReference,
+} from "@/lib/verified-references";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -21,10 +28,15 @@ function toggle(form: FormData, name: string, fallback = false) {
   return values.some(value => value === "on" || value === "true" || value === "1");
 }
 
-function boundedPages(value: FormDataEntryValue | null) {
+function boundedNumber(value: FormDataEntryValue | null, fallback: number, min: number, max: number) {
   const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return 5;
-  return Math.min(20, Math.max(1, Math.round(numeric)));
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(numeric)));
+}
+
+function parseReferenceMode(value: FormDataEntryValue | null): ReferenceMode {
+  if (value === "provided-only" || value === "off") return value;
+  return "agentic";
 }
 
 export async function POST(request: Request) {
@@ -45,9 +57,20 @@ export async function POST(request: Request) {
     const assignmentQuestion = field(form, "assignmentQuestion", 30_000);
     const lecturerInstructions = field(form, "lecturerInstructions", 20_000);
     const sourceMaterial = field(form, "sourceMaterial", 60_000);
-    const targetPages = boundedPages(form.get("targetPages"));
+    const targetPages = boundedNumber(form.get("targetPages"), 5, 1, 20);
     const includeAbstract = toggle(form, "includeAbstract", workType === "term-paper" || workType === "seminar-paper");
     const includeTableOfContents = toggle(form, "includeTableOfContents", workType === "term-paper");
+    const includeVerificationAppendix = toggle(form, "includeVerificationAppendix", false);
+    const referenceMode = parseReferenceMode(form.get("referenceMode"));
+    const currentYear = new Date().getFullYear();
+    const targetReferences = boundedNumber(form.get("targetReferences"), 8, 3, 12);
+    const fromYear = boundedNumber(form.get("referenceYearStart"), Math.max(2000, currentYear - 10), 1950, currentYear);
+    const toYear = boundedNumber(form.get("referenceYearEnd"), currentYear, fromYear, currentYear);
+    const selectedDois = field(form, "selectedDois", 8_000)
+      .split(",")
+      .map(value => value.trim())
+      .filter(Boolean)
+      .slice(0, 20);
 
     if (!title || !studentName || !registrationNumber || !faculty || !department || !courseCode || !assignmentQuestion) {
       return NextResponse.json({
@@ -55,7 +78,34 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    const generatedText = await generateUnnAcademicPaper({
+    let verifiedReferences: VerifiedReference[] = [];
+    if (citationStyle !== "none" && referenceMode !== "off") {
+      if (referenceMode === "provided-only" && !selectedDois.length && !extractDoiList(sourceMaterial).length) {
+        return NextResponse.json({
+          error: "Provided-only verification needs at least one DOI in your source material or selected source list.",
+        }, { status: 400 });
+      }
+
+      const research = await discoverVerifiedReferences({
+        title,
+        assignmentQuestion,
+        sourceMaterial,
+        targetCount: targetReferences,
+        fromYear,
+        toYear,
+        selectedDois,
+        mode: referenceMode,
+      });
+      verifiedReferences = research.references;
+
+      if (!verifiedReferences.length) {
+        return NextResponse.json({
+          error: "No references passed DOI, metadata and retraction verification. Widen the year range, change the topic keywords, paste verified DOIs, or choose No references.",
+        }, { status: 422 });
+      }
+    }
+
+    const rawGeneratedText = await generateUnnAcademicPaper({
       workType,
       title,
       assignmentQuestion,
@@ -64,7 +114,24 @@ export async function POST(request: Request) {
       targetPages,
       citationStyle,
       includeAbstract,
+      verifiedReferences,
     });
+
+    const citationResult = verifiedReferences.length
+      ? applyVerifiedCitationMarkers(rawGeneratedText, verifiedReferences, citationStyle)
+      : { text: rawGeneratedText, usedReferences: [] };
+
+    if (verifiedReferences.length && citationResult.text.includes("[citation verification failed]")) {
+      return NextResponse.json({
+        error: "The draft referenced a source marker that did not pass verification, so generation was stopped. Please try again.",
+      }, { status: 422 });
+    }
+
+    if (verifiedReferences.length && citationResult.usedReferences.length === 0) {
+      return NextResponse.json({
+        error: "The draft did not attach any verified source markers to its claims, so the system stopped rather than create an uncited reference list. Please try again.",
+      }, { status: 422 });
+    }
 
     const buffer = await buildUnnAcademicWordDocument({
       workType,
@@ -80,13 +147,19 @@ export async function POST(request: Request) {
       submissionDate,
       citationStyle,
       includeTableOfContents,
-      generatedText,
+      includeVerificationAppendix,
+      verifiedReferences: citationResult.usedReferences,
+      generatedText: citationResult.text,
     });
 
     const filename = safeAttachmentFilename(`${studentName}-${courseCode}-${workType}`, {
       extension: ".docx",
       fallback: "UNN-academic-paper",
     });
+
+    const minQuality = citationResult.usedReferences.length
+      ? Math.min(...citationResult.usedReferences.map(reference => reference.qualityScore))
+      : 0;
 
     return new Response(new Uint8Array(buffer), {
       headers: {
@@ -95,9 +168,12 @@ export async function POST(request: Request) {
         "Content-Length": String(buffer.length),
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
-        "X-Academic-Writer": "UNN",
+        "X-Academic-Writer": "UNN-Agentic-Verified",
         "X-Work-Type": workType,
         "X-AI-Used": "true",
+        "X-Verified-References": String(citationResult.usedReferences.length),
+        "X-Min-Reference-Quality": String(minQuality),
+        "X-Retraction-Check": citationResult.usedReferences.length ? "passed" : "not-applicable",
       },
     });
   } catch (error) {
