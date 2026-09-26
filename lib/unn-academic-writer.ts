@@ -1,3 +1,6 @@
+import type { VerifiedReference } from "./verified-references";
+import { buildEvidencePacket } from "./verified-references";
+
 export type UnnAcademicWorkType = "assignment" | "assessment" | "term-paper" | "seminar-paper";
 export type UnnCitationStyle = "apa7" | "harvard" | "mla9" | "none";
 
@@ -10,6 +13,7 @@ export type UnnAcademicWriterInput = {
   targetPages: number;
   citationStyle: UnnCitationStyle;
   includeAbstract: boolean;
+  verifiedReferences?: VerifiedReference[];
 };
 
 type ChatCompletionResponse = {
@@ -59,7 +63,6 @@ function structureFor(input: UnnAcademicWriterInput) {
       "# DISCUSSION / ANALYSIS",
       "# CONCLUSION",
       "# RECOMMENDATIONS",
-      input.citationStyle === "none" ? "" : "# REFERENCES",
     ].filter(Boolean).join("\n");
   }
 
@@ -71,7 +74,6 @@ function structureFor(input: UnnAcademicWriterInput) {
       "# MAIN DISCUSSION",
       "# IMPLICATIONS / CHALLENGES",
       "# CONCLUSION",
-      input.citationStyle === "none" ? "" : "# REFERENCES",
     ].filter(Boolean).join("\n");
   }
 
@@ -80,7 +82,6 @@ function structureFor(input: UnnAcademicWriterInput) {
     "# INTRODUCTION",
     "# MAIN DISCUSSION",
     "# CONCLUSION",
-    input.citationStyle === "none" ? "" : "# REFERENCES",
   ].filter(Boolean).join("\n");
 }
 
@@ -106,6 +107,8 @@ export async function generateUnnAcademicPaper(input: UnnAcademicWriterInput) {
   const targetWords = Math.min(7_000, Math.max(700, targetPages * 350));
   const sourceMaterial = (input.sourceMaterial || "").trim().slice(0, MAX_SOURCE_CHARS);
   const lecturerInstructions = (input.lecturerInstructions || "").trim().slice(0, MAX_INSTRUCTION_CHARS);
+  const verifiedReferences = input.verifiedReferences || [];
+  const evidencePacket = buildEvidencePacket(verifiedReferences);
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${apiKey}`,
@@ -126,7 +129,7 @@ export async function generateUnnAcademicPaper(input: UnnAcademicWriterInput) {
       signal: controller.signal,
       body: JSON.stringify({
         model,
-        temperature: 0.25,
+        temperature: 0.2,
         max_tokens: Math.min(14_000, Math.max(2_500, Math.ceil(targetWords * 1.8))),
         messages: [
           {
@@ -136,9 +139,13 @@ export async function generateUnnAcademicPaper(input: UnnAcademicWriterInput) {
               "Produce a strong university-level draft that the student must review, verify and adapt before submission.",
               "Follow the lecturer's specific instructions whenever they conflict with the default structure.",
               "Use clear Nigerian university academic English, coherent paragraphs and meaningful headings.",
-              "Do not fabricate citations, references, quotations, statistics, authors, dates, findings or URLs.",
-              "Use only verifiable sources supplied by the user for source-specific claims.",
-              "If citations or a reference list are required but no verified sources were supplied, insert [Add verified citation] and [Add verified source] placeholders instead of inventing references.",
+              "Never fabricate citations, references, quotations, statistics, authors, dates, findings or URLs.",
+              verifiedReferences.length
+                ? "A verified evidence register is supplied. Use only those scholarly sources for academic citations. After a sentence or claim supported by a source, append its exact marker such as [[VR1]]. Never invent a marker and never cite a source whose evidence does not support the claim."
+                : "No verified scholarly references are supplied. Do not invent citations or references.",
+              "When a source has only metadata and no evidence abstract, do not attribute a detailed result, statistic or conclusion to it.",
+              "Do not type author-year citations yourself when verified sources are supplied; use only the [[VR#]] markers because the citation engine will render the selected style deterministically.",
+              "Do not create a References, Works Cited or Bibliography section. The Word renderer builds the reference list directly from verified metadata.",
               "Do not add a title page; the Word renderer creates the UNN title page from student/course metadata.",
               "Use Markdown headings exactly so the Word renderer can style the document.",
               "Return only the paper content. Do not add commentary or code fences.",
@@ -154,7 +161,8 @@ export async function generateUnnAcademicPaper(input: UnnAcademicWriterInput) {
               `Preferred section framework:\n${structureFor(input)}`,
               `Assignment question / brief:\n${assignmentQuestion}`,
               lecturerInstructions ? `Lecturer / departmental instructions (take priority):\n${lecturerInstructions}` : "",
-              sourceMaterial ? `Verified notes, source extracts or references supplied by the student:\n${sourceMaterial}` : "No verified source material was supplied. Do not invent references.",
+              sourceMaterial ? `Student-supplied notes or source leads. Treat these as context, not automatically verified citations:\n${sourceMaterial}` : "",
+              evidencePacket ? `VERIFIED SCHOLARLY EVIDENCE REGISTER:\n${evidencePacket}` : "",
             ].filter(Boolean).join("\n\n"),
           },
         ],
