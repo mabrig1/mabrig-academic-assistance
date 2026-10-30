@@ -65,6 +65,7 @@ export default function FileBridgeTransfer() {
   const aliveRef = useRef(true);
 
   useEffect(() => {
+    aliveRef.current = true;
     const code = new URLSearchParams(window.location.search).get("code") || "";
     if (/^\d{8}$/.test(code)) setJoinCode(code);
     return () => {
@@ -103,7 +104,7 @@ export default function FileBridgeTransfer() {
           return;
         }
         receiverRef.current = {
-          name: packet.name.replace(/[/\\<>:"|?*\x00-\x1f]/g, "_").slice(0, 180) || "download",
+          name: packet.name.replace(/[\/\\<>:"|?*\x00-\x1f]/g, "_").slice(0, 180) || "download",
           size: packet.size, received: 0, chunks: [],
         };
         setProgress("Receiving " + packet.name + " (0%)");
