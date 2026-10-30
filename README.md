@@ -21,6 +21,19 @@ Open-source MVP for Mabrig ICT & Academic Assistance: student ordering, academic
 - APA 7 / MLA 9 reference layouts and empty-paragraph cleanup
 - WhatsApp and Telegram admin notifications with the submitted document attached
 
+## FileBridge — phone ↔ laptop
+
+The **FileBridge** feature is available at `/filebridge`; `/file-transfer` redirects there. On the home page, the primary menu stays minimal: Academic Writer, File Converter, FileBridge, and **More** (all previous destinations remain accessible).
+
+Two transfer methods are supported:
+
+- **Direct browser-to-browser (recommended for files up to 100 MB each):** Open `/filebridge` on both the laptop and phone, create a temporary room on one device, and join using its eight-digit code or pairing link. The server stores only ephemeral WebRTC connection metadata in MongoDB; actual file bytes go via the encrypted WebRTC data channel and are held in the recipient browser until downloaded. Both devices must remain on the page with a working connection. No Cloudflare R2 bucket is required. Use the same Wi-Fi or hotspot; some restricted networks prevent peer-to-peer connections because the current version does **not** use a TURN relay.
+- **Windows offline receiver:** Open the separately installed MABRIG FileBridge Windows EXE on the laptop. On the phone, open the local private IP address printed by the receiver (example: `http://192.168.1.10:8765`) or use the local-IP navigation box at the bottom of `/filebridge`. This mode supports larger transfers (up to 2 GB per file), is independent of the hosted site, and works without internet. Local HTTP is **not encrypted**; use private Wi-Fi only.
+
+The browser-to-browser pairing API uses the existing server-only `MONGODB_URI` environment variable and an automatically expiring MongoDB collection. No new credentials, external file storage or public bucket are required. Rooms expire after 45 minutes, with brute-force throttling on pairing endpoints.
+
+**Testing:** Check with two real devices. Verify link sharing, offer/answer pairing, a 1 MB photo or document sent both ways, download naming, expiry and disconnect. Android browsers may not automatically save incoming files: tap the **Download** link. The direct connection cannot be guaranteed across all firewalls or without server access.
+
 ## Roadmap
 
 1. PostgreSQL + Prisma/Drizzle persistence
