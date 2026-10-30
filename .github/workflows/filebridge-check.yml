@@ -1,0 +1,42 @@
+name: FileBridge Route Typecheck
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/api/filebridge/**"
+      - "app/filebridge/**"
+      - "app/file-transfer/**"
+      - "app/page.tsx"
+      - "app/globals.css"
+      - "lib/mongodb.ts"
+      - "package.json"
+      - ".github/workflows/filebridge-check.yml"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck-and-route:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install dependencies
+        run: npm install --no-fund --no-audit
+      - name: Verify FileBridge route files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s app/filebridge/page.tsx
+          test -s app/filebridge/FileBridgeTransfer.tsx
+          test -s app/api/filebridge/route.ts
+          test -s app/file-transfer/page.tsx
+          grep -q 'href="/filebridge"' app/page.tsx
+      - name: Typecheck Next.js app
+        run: npx tsc --noEmit
