@@ -154,10 +154,11 @@ export async function POST(request: NextRequest) {
           !sdp.startsWith("v=0")) {
         return json({ error: "Invalid WebRTC signal." }, 400);
       }
+      const validatedRole = role as Role;
       const { rooms } = await collections();
       const room = await rooms.findOne({ _id: roomId, expiresAt: { $gt: new Date() } });
-      if (!room || !authenticated(room, role, key)) return json({ error: "Session expired or unauthorized." }, 401);
-      const signal: Signal = { id: randomUUID(), from: role, kind, sdp };
+      if (!room || !authenticated(room, validatedRole, key)) return json({ error: "Session expired or unauthorized." }, 401);
+      const signal: Signal = { id: randomUUID(), from: validatedRole, kind: kind as "offer" | "answer", sdp };
       await rooms.updateOne(
         { _id: roomId, expiresAt: { $gt: new Date() } },
         { $push: { signals: { $each: [signal], $slice: -8 } } },
